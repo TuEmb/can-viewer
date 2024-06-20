@@ -1,7 +1,7 @@
 import { ComboBox, Button, VerticalBox, CheckBox, GroupBox } from "std-widgets.slint";
 import { TextEdit } from "std-widgets.slint";
 import { AboutSlint, Palette, Slider, HorizontalBox } from "std-widgets.slint";
-import { LineEdit, StandardButton, ScrollView } from "std-widgets.slint";
+import { LineEdit, StandardButton, ScrollView, TabWidget } from "std-widgets.slint";
 import { CanMessage, CanSignal } from "messages.slint";
 
 struct CanData {
@@ -13,32 +13,15 @@ struct CanData {
 
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
-    in property <string> filter_index: "18EFF4FA";
     in property <[CanData]> messages;
-    in property <CanData> filter_messages;
+    in property <[CanData]> filter_messages;
 
     callback open_dbc_file();
-    callback filter_id(string);
+    callback filter_id(CanData, bool);
     title: @tr("CAN VIEWER (version 0.1.0)");
     background: #bcc3ca;
     default-font-family: "Noto Sans";
     default-font-size: 14px;
-    Text {
-        x: parent.x + parent.width/2 - self.width/2; // config x position to center
-        y: parent.y + 20px;
-        horizontal-alignment: center;
-        vertical-alignment: top;
-        font-family: "Noto Sans";
-        text: "CAN VIEWER v0.1.0";
-        font-size: 25px;
-        color: black;
-    }
-    Rectangle {
-        y: parent.y + 55px;
-        height: 3px;
-        width: parent.width/2;
-        background: #000000;
-    }
 
     button := Button {
         x: root.x;
@@ -49,42 +32,54 @@ export component AppWindow inherits Window {
         }
     }
 
-    filter := LineEdit {
-        x: root.x + button.width + 5px;
+    TabWidget {
+        x: root.x + button.width;
         y: root.y;
-        placeholder-text: "18FEFAFA";
-        font-size: 12px;
-        accepted => {
-            filter_id(filter.text);
-        }
-    }
-    if !root.is_filter:
-    ScrollView {
-        width: root.width;
-        height: root.height - 120px;
-        
-        VerticalBox{
-            width: root.width;
-            for message in messages: CanMessage {
-                message_id: message.can-id;
-                message_name: message.packet-name;
-                counter: message.counter;
-                signals: message.signal-value;
+        width: root.width - 2*button.width;
+
+        main_page := Tab {
+            title: "view";
+            if !root.is_filter:
+            ScrollView {
+                width: root.width;
+                height: root.height - 120px;    
+                VerticalBox{
+                    width: root.width;
+                    for message in messages: CanMessage {
+                        message_id: message.can-id;
+                        message_name: message.packet-name;
+                        counter: message.counter;
+                        signals: message.signal-value;
+                    }
+                }
+            }
+            if root.is_filter:
+            ScrollView {
+                width: root.width;
+                height: root.height - 120px;
+                
+                VerticalBox{
+                    width: root.width;
+                    for message in filter_messages: CanMessage {
+                        message_id: message.can-id;
+                        message_name: message.packet-name;
+                        counter: message.counter;
+                        signals: message.signal-value;
+                    }
+                }
             }
         }
-    }
-    if root.is_filter:
-    ScrollView {
-        width: root.width;
-        height: root.height - 120px;
-        
-        VerticalBox{
-            width: root.width;
-            CanMessage {
-                message_id: filter_messages.can-id;
-                message_name: filter_messages.packet-name;
-                counter: filter_messages.counter;
-                signals: filter_messages.signal-value;
+        Select_page := Tab {
+            title: "filter";
+            ScrollView {
+                VerticalBox{
+                    for message in messages: CheckBox {
+                        text: message.can-id + "(" + message.packet-name + ")";
+                        toggled => {
+                            filter_id(message, self.checked)
+                        }
+                    }
+                }
             }
         }
     }

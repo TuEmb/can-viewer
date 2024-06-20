@@ -1,12 +1,11 @@
 use rfd::FileDialog;
 use slint::{Model, ModelRc, SharedString, VecModel};
 use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
-use tokio::sync::mpsc;
-
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
+use tokio::sync::mpsc;
 
 slint::include_modules!();
 
@@ -46,6 +45,8 @@ async fn main() -> io::Result<()> {
                                 .to_vec(),
                             ));
 
+                            let filter_list: Rc<VecModel<SharedString>> =
+                                Rc::new(VecModel::from([SharedString::from("default")].to_vec()));
                             let mut message_count = 0;
                             for message in dbc.messages() {
                                 let can_signals: Rc<VecModel<CanSignal>> = Rc::new(VecModel::from(
@@ -84,9 +85,20 @@ async fn main() -> io::Result<()> {
                                 };
 
                                 if message_count == 0 {
+                                    filter_list.set_row_data(
+                                        message_count,
+                                        SharedString::from(format!(
+                                            "{:08X}",
+                                            message.message_id().raw() & !0x80000000
+                                        )),
+                                    );
                                     message_vec.set_row_data(message_count, can_data)
                                 } else {
                                     message_vec.push(can_data);
+                                    filter_list.push(SharedString::from(format!(
+                                        "{:08X}",
+                                        message.message_id().raw() & !0x80000000
+                                    )));
                                 }
                                 message_count += 1;
                             }
@@ -112,10 +124,14 @@ async fn main() -> io::Result<()> {
                         let signal_data = message.parse_from_can(&padding_data);
 
                         let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                            let messages: ModelRc<CanData> = ui.get_messages();
-                            let filter_index = ui.get_filter_index();
+                            let is_filter = ui.get_is_filter();
+                            let messages: ModelRc<CanData> = if !is_filter {
+                                ui.get_messages()
+                            } else {
+                                ui.get_filter_messages()
+                            };
                             let mut message_count = 0;
-                            for message in messages.iter() {
+                            for message in messages.clone().iter() {
                                 if message.can_id == SharedString::from(format!("{:08X}", frame_id))
                                 {
                                     let can_signals: Rc<VecModel<CanSignal>> =
@@ -159,19 +175,8 @@ async fn main() -> io::Result<()> {
                                             counter: message.counter + 1,
                                         },
                                     );
-                                    if filter_index == message.can_id {
-                                        ui.set_filter_messages(CanData {
-                                            can_id: message.can_id,
-                                            packet_name: message.packet_name,
-                                            signal_value: can_signals.into(),
-                                            counter: message.counter + 1,
-                                        })
-                                    }
                                     continue;
-                                } else if filter_index == message.can_id {
-                                    ui.set_filter_messages(message)
                                 }
-
                                 message_count += 1;
                             }
                         });
@@ -181,12 +186,29 @@ async fn main() -> io::Result<()> {
         }
     });
     let ui_handle = ui.as_weak();
-    ui.on_filter_id(move |filter| {
-        if filter.is_empty() {
-            ui_handle.unwrap().set_is_filter(false);
+    ui.on_filter_id(move |filter, checked| {
+        let ui = ui_handle.unwrap();
+        let mut list_filter: Vec<CanData> = ui.get_filter_messages().iter().collect();
+        if checked {
+            // Add filter ID
+            list_filter.push(filter);
         } else {
-            ui_handle.unwrap().set_is_filter(true);
-            ui_handle.unwrap().set_filter_index(filter);
+            // Remove filter ID
+            let mut filter_count = 0;
+            for can_filter in list_filter.clone() {
+                if can_filter.can_id == filter.can_id {
+                    list_filter.remove(filter_count);
+                }
+                filter_count += 1;
+            }
+        }
+
+        ui.set_filter_messages(Rc::new(VecModel::from(list_filter.clone())).into());
+
+        if list_filter.is_empty() {
+            ui.set_is_filter(false);
+        } else {
+            ui.set_is_filter(true);
         }
     });
 
