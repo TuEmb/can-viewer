@@ -10,6 +10,7 @@ export struct CanSignal {
 export component CanMessage inherits HorizontalBox {
     in property <string> message_id: "0x00000000";
     in property <string> message_name: "packet_xxx";
+    in property <int> counter: 0;
     in property <[CanSignal]> signals: [
         {signal_name: "signal_1", signal_value: "100", unit: "Hz", factor: "1.0"},
         {signal_name: "signal_2", signal_value: "999", unit: "Km", factor: "1.0"},
@@ -25,7 +26,9 @@ export component CanMessage inherits HorizontalBox {
         border-color: black;
         border-width: 1px;
         Text {
-            text: root.message_id + "\n" + root.message_name;
+            text: root.message_id + "\n" + root.message_name + "\n" + root.counter;
+            horizontal-alignment: center;
+            vertical-alignment: center;
         }   
     }
 

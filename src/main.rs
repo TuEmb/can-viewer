@@ -24,7 +24,7 @@ async fn main() -> io::Result<()> {
             tokio::spawn(async move {
                 let files = FileDialog::new()
                     .add_filter("dbc", &["dbc"])
-                    .set_directory("/")
+                    .set_directory("./")
                     .pick_file();
                 if let Some(path_dbc) = files {
                     if path_dbc.is_file() {
@@ -41,6 +41,7 @@ async fn main() -> io::Result<()> {
                                     can_id: SharedString::from("default"),
                                     packet_name: SharedString::from("default"),
                                     signal_value: ModelRc::default(),
+                                    counter: 0,
                                 }]
                                 .to_vec(),
                             ));
@@ -80,6 +81,7 @@ async fn main() -> io::Result<()> {
                                     )),
                                     packet_name: SharedString::from(message.message_name()),
                                     signal_value: can_signals.into(),
+                                    counter: 0,
                                 };
 
                                 if message_count == 0 {
@@ -107,7 +109,11 @@ async fn main() -> io::Result<()> {
                 let frame_id = frame.raw_id() & !0x80000000;
                 for message in dbc.messages() {
                     if frame_id == (message.message_id().raw() & !0x80000000) {
-                        let signal_data = message.parse_from_can(frame.data());
+                        let padding_data = pad_to_8_bytes(frame.data());
+                        let signal_data = message.parse_from_can(&padding_data);
+                        if frame_id == 0x18EFF4FA {
+                            println!("{:?} -- {:?}", signal_data, frame.data());
+                        }
                         let _ = ui_handle.upgrade_in_event_loop(move |ui| {
                             let messages: ModelRc<CanData> = ui.get_messages();
                             let mut message_count = 0;
@@ -152,6 +158,7 @@ async fn main() -> io::Result<()> {
                                             can_id: message.can_id,
                                             packet_name: message.packet_name,
                                             signal_value: can_signals.into(),
+                                            counter: message.counter + 1,
                                         },
                                     );
                                     continue;
@@ -162,11 +169,24 @@ async fn main() -> io::Result<()> {
                         });
                     }
                 }
-                // let messages = ui_handle.get_messages();
             }
         }
     });
 
     let _ = ui.run();
     Ok(())
+}
+
+fn pad_to_8_bytes(data: &[u8]) -> Vec<u8> {
+    // Convert the byte slice to a Vec<u8>
+    let mut padded_data = data.to_vec();
+
+    // Calculate the number of padding bytes needed
+    let padding_needed = 8usize.saturating_sub(padded_data.len());
+
+    // Extend the vector with zeros (or another byte) to make it 8 bytes long
+    padded_data.extend(std::iter::repeat(0).take(padding_needed));
+
+    // Return the padded vector
+    padded_data
 }

@@ -7,6 +7,7 @@ import { CanMessage, CanSignal } from "messages.slint";
 struct CanData {
     can_id: string,
     packet_name: string,
+    counter: int,
     signal_value: [CanSignal],
 }
 
@@ -53,6 +54,7 @@ export component AppWindow inherits Window {
             for message in messages: CanMessage {
                 message_id: message.can-id;
                 message_name: message.packet-name;
+                counter: message.counter;
                 signals: message.signal-value;
             }
         }
