@@ -1,0 +1,68 @@
+import {HorizontalBox, VerticalBox } from "std-widgets.slint";
+
+export struct CanSignal {
+    signal_name: string,
+    signal_value: string,
+    unit: string,
+    factor: string,
+}
+
+export component CanMessage inherits HorizontalBox {
+    in property <string> message_id: "0x00000000";
+    in property <string> message_name: "packet_xxx";
+    in property <[CanSignal]> signals: [
+        {signal_name: "signal_1", signal_value: "100", unit: "Hz", factor: "1.0"},
+        {signal_name: "signal_2", signal_value: "999", unit: "Km", factor: "1.0"},
+        {signal_name: "signal_3", signal_value: "203", unit: "second", factor: "1.0"},
+        {signal_name: "signal_4", signal_value: "15.6", unit: "mWh", factor: "1.0"},
+        {signal_name: "signal_5", signal_value: "20.9", unit: "A", factor: "1.0"},
+        {signal_name: "signal_6", signal_value: "10", unit: "Volt", factor: "1.0"},
+        {signal_name: "signal_7", signal_value: "1", unit: "mA", factor: "1.0"}];
+
+    // Message ID
+    Rectangle {
+        width: root.width / 4;
+        border-color: black;
+        border-width: 1px;
+        Text {
+            text: root.message_id + "\n" + root.message_name;
+        }   
+    }
+
+    VerticalBox {
+        for signal in signals: HorizontalBox { 
+            Rectangle {
+                width: root.width / 4;
+                border-color: black;
+                border-width: 1px;
+                Text {
+                    text: signal.signal_name;
+                }  
+            }
+            Rectangle {
+                width: root.width / 8;
+                border-color: black;
+                border-width: 1px;
+                Text {
+                    text: signal.signal_value;
+                }  
+            }
+            Rectangle {
+                width: root.width / 8;
+                border-color: black;
+                border-width: 1px;
+                Text {
+                    text: signal.unit;
+                }  
+            }
+            Rectangle {
+                width: root.width / 8;
+                border-color: black;
+                border-width: 1px;
+                Text {
+                    text: signal.factor;
+                }  
+            }
+        }
+    }
+}
