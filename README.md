@@ -18,11 +18,11 @@ Currently, **can-viewer** is using socket can of system to read can packet. Refe
 - You must make sure socket can is able to read CAN packets from CAN bus (use `candump can0` command to check).
 - Build the app by command:
 ```
-cargo build
+cargo build --release
 ```
 - Run the app by command:
 ```
-cargo run
+cargo run --release
 ```
 ## Window (not support)
 ## IOS (not support)

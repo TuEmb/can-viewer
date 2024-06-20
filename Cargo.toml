@@ -4,8 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-codegen = "0.2"
-env_logger = "0.11.3"
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
 tokio = { version = "1.38.0", features = ["full"] }
 socketcan = "3.3.0"

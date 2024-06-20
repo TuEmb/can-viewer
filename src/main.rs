@@ -122,7 +122,6 @@ async fn main() -> io::Result<()> {
                     if frame_id == (message.message_id().raw() & !0x80000000) {
                         let padding_data = pad_to_8_bytes(frame.data());
                         let signal_data = message.parse_from_can(&padding_data);
-
                         let _ = ui_handle.upgrade_in_event_loop(move |ui| {
                             let is_filter = ui.get_is_filter();
                             let messages: ModelRc<CanData> = if !is_filter {
@@ -175,7 +174,7 @@ async fn main() -> io::Result<()> {
                                             counter: message.counter + 1,
                                         },
                                     );
-                                    continue;
+                                    break;
                                 }
                                 message_count += 1;
                             }
