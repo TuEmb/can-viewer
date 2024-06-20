@@ -12,10 +12,13 @@ struct CanData {
 }
 
 export component AppWindow inherits Window {
-    
+    in property <bool> is_filter: false;
+    in property <string> filter_index: "18EFF4FA";
     in property <[CanData]> messages;
+    in property <CanData> filter_messages;
 
     callback open_dbc_file();
+    callback filter_id(string);
     title: @tr("CAN VIEWER (version 0.1.0)");
     background: @linear-gradient(90deg, #94f1f8 0%, #b6fca0 50%, #88f6fa 100%);
     default-font-family: "Noto Sans";
@@ -37,7 +40,7 @@ export component AppWindow inherits Window {
         background: #000000;
     }
 
-    Button {
+    button := Button {
         x: root.x;
         y: root.y;
         text: "Open";
@@ -46,9 +49,20 @@ export component AppWindow inherits Window {
         }
     }
 
+    filter := LineEdit {
+        x: root.x + button.width + 5px;
+        y: root.y;
+        placeholder-text: "18FEFAFA";
+        font-size: 12px;
+        accepted => {
+            filter_id(filter.text);
+        }
+    }
+    if !root.is_filter:
     ScrollView {
         width: root.width;
         height: root.height - 120px;
+        
         VerticalBox{
             width: root.width;
             for message in messages: CanMessage {
@@ -56,6 +70,21 @@ export component AppWindow inherits Window {
                 message_name: message.packet-name;
                 counter: message.counter;
                 signals: message.signal-value;
+            }
+        }
+    }
+    if root.is_filter:
+    ScrollView {
+        width: root.width;
+        height: root.height - 120px;
+        
+        VerticalBox{
+            width: root.width;
+            CanMessage {
+                message_id: filter_messages.can-id;
+                message_name: filter_messages.packet-name;
+                counter: filter_messages.counter;
+                signals: filter_messages.signal-value;
             }
         }
     }

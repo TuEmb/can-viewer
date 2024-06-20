@@ -48,7 +48,6 @@ async fn main() -> io::Result<()> {
 
                             let mut message_count = 0;
                             for message in dbc.messages() {
-
                                 let can_signals: Rc<VecModel<CanSignal>> = Rc::new(VecModel::from(
                                     [CanSignal {
                                         signal_name: SharedString::from("default"),
@@ -111,11 +110,10 @@ async fn main() -> io::Result<()> {
                     if frame_id == (message.message_id().raw() & !0x80000000) {
                         let padding_data = pad_to_8_bytes(frame.data());
                         let signal_data = message.parse_from_can(&padding_data);
-                        if frame_id == 0x18EFF4FA {
-                            println!("{:?} -- {:?}", signal_data, frame.data());
-                        }
+
                         let _ = ui_handle.upgrade_in_event_loop(move |ui| {
                             let messages: ModelRc<CanData> = ui.get_messages();
+                            let filter_index = ui.get_filter_index();
                             let mut message_count = 0;
                             for message in messages.iter() {
                                 if message.can_id == SharedString::from(format!("{:08X}", frame_id))
@@ -155,13 +153,23 @@ async fn main() -> io::Result<()> {
                                     messages.set_row_data(
                                         message_count,
                                         CanData {
+                                            can_id: message.can_id.clone(),
+                                            packet_name: message.packet_name.clone(),
+                                            signal_value: can_signals.clone().into(),
+                                            counter: message.counter + 1,
+                                        },
+                                    );
+                                    if filter_index == message.can_id {
+                                        ui.set_filter_messages(CanData {
                                             can_id: message.can_id,
                                             packet_name: message.packet_name,
                                             signal_value: can_signals.into(),
                                             counter: message.counter + 1,
-                                        },
-                                    );
+                                        })
+                                    }
                                     continue;
+                                } else if filter_index == message.can_id {
+                                    ui.set_filter_messages(message)
                                 }
 
                                 message_count += 1;
@@ -170,6 +178,15 @@ async fn main() -> io::Result<()> {
                     }
                 }
             }
+        }
+    });
+    let ui_handle = ui.as_weak();
+    ui.on_filter_id(move |filter| {
+        if filter.is_empty() {
+            ui_handle.unwrap().set_is_filter(false);
+        } else {
+            ui_handle.unwrap().set_is_filter(true);
+            ui_handle.unwrap().set_filter_index(filter);
         }
     });
 
