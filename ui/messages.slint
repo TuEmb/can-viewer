@@ -7,7 +7,7 @@ export struct CanSignal {
     factor: string,
 }
 
-export component CanMessage inherits HorizontalBox {
+export component CanMessage inherits HorizontalLayout {
     in property <string> message_id: "0x00000000";
     in property <string> message_name: "packet_xxx";
     in property <int> counter: 0;
@@ -22,9 +22,9 @@ export component CanMessage inherits HorizontalBox {
 
     // Message ID
     Rectangle {
-        width: root.width / 4;
+        width: root.width * 30%;
         border-color: black;
-        border-width: 1px;
+        border-width: 0.75px;
         Text {
             text: root.message_id + "\n" + root.message_name + "\n" + root.counter;
             horizontal-alignment: center;
@@ -32,36 +32,36 @@ export component CanMessage inherits HorizontalBox {
         }   
     }
 
-    VerticalBox {
-        for signal in signals: HorizontalBox { 
+    VerticalLayout {
+        for signal in signals: HorizontalLayout { 
             Rectangle {
-                width: root.width / 4;
+                width: root.width * 30%;
                 border-color: black;
-                border-width: 1px;
+                border-width: 0.35px;
                 Text {
                     text: signal.signal_name;
                 }  
             }
             Rectangle {
-                width: root.width / 8;
+                width: root.width * 20%;
                 border-color: black;
-                border-width: 1px;
+                border-width: 0.35px;
                 Text {
                     text: signal.signal_value;
                 }  
             }
             Rectangle {
-                width: root.width / 8;
+                width: root.width * 10%;
                 border-color: black;
-                border-width: 1px;
+                border-width: 0.35px;
                 Text {
                     text: signal.unit;
                 }  
             }
             Rectangle {
-                width: root.width / 8;
+                width: root.width * 10%;
                 border-color: black;
-                border-width: 1px;
+                border-width: 0.35px;
                 Text {
                     text: signal.factor;
                 }  

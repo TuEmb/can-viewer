@@ -19,7 +19,7 @@ export component AppWindow inherits Window {
     callback open_dbc_file();
     callback filter_id(CanData, bool);
     title: @tr("CAN VIEWER (version 0.1.0)");
-    background: #bcc3ca;
+    background: #c7b6a7;
     default-font-family: "Noto Sans";
     default-font-size: 14px;
 
@@ -42,7 +42,7 @@ export component AppWindow inherits Window {
             if !root.is_filter:
             ScrollView {
                 width: root.width;
-                height: root.height - 120px;    
+                height: root.height - 120px;
                 VerticalBox{
                     width: root.width;
                     for message in messages: CanMessage {
