@@ -70,9 +70,8 @@ impl<'a> CanHandler<'a> {
         frame_id: u32,
         signal_data: HashMap<String, f32>,
     ) {
-        let mut message_count = 0;
-        for message in messages.iter() {
-            if message.can_id == SharedString::from(format!("{:08X}", frame_id)) {
+        for (message_count, message) in messages.iter().enumerate() {
+            if message.can_id == frame_id.to_string() {
                 let can_signals = Self::create_can_signals(&message, &signal_data);
                 messages.set_row_data(
                     message_count,
@@ -85,7 +84,6 @@ impl<'a> CanHandler<'a> {
                 );
                 break;
             }
-            message_count += 1;
         }
     }
 

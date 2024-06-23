@@ -19,12 +19,10 @@ impl<'a> PacketFilter<'a> {
             list_filter.push(self.filter);
         } else {
             // Remove filter ID
-            let mut filter_count = 0;
-            for can_filter in list_filter.clone() {
+            for (filter_count, can_filter) in list_filter.clone().into_iter().enumerate() {
                 if can_filter.can_id == self.filter.can_id {
                     list_filter.remove(filter_count);
                 }
-                filter_count += 1;
             }
         }
 
