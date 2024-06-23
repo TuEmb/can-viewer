@@ -24,6 +24,11 @@ impl<'a> DBCFile<'a> {
                 let dbc_clone = dbc.clone();
                 let ui = self.ui_handle.unwrap();
                 ui.set_is_new_dbc(true);
+                ui.set_is_filter(false);
+                // Remove all filter data when open new DBC file
+                let list_filter: Vec<CanData> = [].to_vec();
+                ui.set_filter_messages(Rc::new(VecModel::from(list_filter.clone())).into());
+
                 let message_vec: Rc<VecModel<CanData>> = Rc::new(VecModel::from(
                     [CanData {
                         can_id: SharedString::from("default"),
