@@ -13,6 +13,7 @@ struct CanData {
 
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
+    in property <bool> is_new_dbc: false;
     in property <[CanData]> messages;
     in property <[CanData]> filter_messages;
 
@@ -20,8 +21,8 @@ export component AppWindow inherits Window {
     callback filter_id(CanData, bool);
     title: @tr("CAN VIEWER (version 0.1.0)");
     background: #c7b6a7;
-    default-font-family: "Noto Sans";
-    default-font-size: 14px;
+    default-font-family: "Roboto";
+    default-font-size: 12px;
 
     button := Button {
         x: root.x;

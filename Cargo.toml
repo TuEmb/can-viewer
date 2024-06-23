@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
-tokio = { version = "1.38.0", features = ["full"] }
 socketcan = "3.3.0"
 rfd = "0.14.1"
 slint = "1.6.0"
