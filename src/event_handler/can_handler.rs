@@ -1,8 +1,9 @@
 use can_dbc::DBC;
-use slint::{Model, VecModel, Weak};
+use slint::{Color, Model, VecModel, Weak};
 use slint::{ModelRc, SharedString};
 use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
 use std::collections::HashMap;
+use std::fmt::Write;
 use std::rc::Rc;
 use std::sync::mpsc::Receiver;
 use std::thread::sleep;
@@ -51,6 +52,7 @@ impl<'a> CanHandler<'a> {
                 for message in dbc.messages() {
                     if frame_id == (message.message_id().raw() & !0x80000000) {
                         let padding_data = Self::pad_to_8_bytes(frame.data());
+                        let hex_string = Self::array_to_hex_string(frame.data());
                         let signal_data = message.parse_from_can(&padding_data);
                         let is_filter = ui.get_is_filter();
                         let messages: ModelRc<CanData> = if !is_filter {
@@ -58,7 +60,7 @@ impl<'a> CanHandler<'a> {
                         } else {
                             ui.get_filter_messages()
                         };
-                        Self::update_ui_with_signals(&messages, frame_id, signal_data);
+                        Self::update_ui_with_signals(&messages, frame_id, signal_data, hex_string);
                     }
                 }
             }
@@ -69,6 +71,7 @@ impl<'a> CanHandler<'a> {
         messages: &ModelRc<CanData>,
         frame_id: u32,
         signal_data: HashMap<String, f32>,
+        raw_can: String,
     ) {
         for (message_count, message) in messages.iter().enumerate() {
             if message.can_id == frame_id.to_string() {
@@ -80,6 +83,12 @@ impl<'a> CanHandler<'a> {
                         packet_name: message.packet_name.clone(),
                         signal_value: can_signals.into(),
                         counter: message.counter + 1,
+                        raw_can: raw_can.into(),
+                        color: if message_count % 2 == 0 {
+                            Color::from_rgb_u8(0xc8, 0xc8, 0xcc)
+                        } else {
+                            Color::from_rgb_u8(0xda, 0xda, 0xda)
+                        },
                     },
                 );
                 break;
@@ -132,5 +141,15 @@ impl<'a> CanHandler<'a> {
 
         // Return the padded vector
         padded_data
+    }
+
+    fn array_to_hex_string(data: &[u8]) -> String {
+        // Preallocate space for efficiency
+        let mut hex_string = String::with_capacity(data.len() * 3);
+        for byte in data {
+            write!(hex_string, "{:02X} ", byte).unwrap();
+        }
+        hex_string.pop(); // Remove the trailing space
+        hex_string
     }
 }

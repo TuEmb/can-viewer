@@ -7,8 +7,10 @@ import { CanMessage, CanSignal } from "messages.slint";
 struct CanData {
     can_id: string,
     packet_name: string,
+    raw_can: string,
     counter: int,
     signal_value: [CanSignal],
+    color: color
 }
 
 export component AppWindow inherits Window {
@@ -20,13 +22,13 @@ export component AppWindow inherits Window {
     callback open_dbc_file();
     callback filter_id(CanData, bool);
     title: @tr("CAN VIEWER (version 0.1.0)");
-    background: #c7b6a7;
-    default-font-family: "Roboto";
+    background: #555555;
+    default-font-family: "Noto Sans";
     default-font-size: 12px;
 
     button := Button {
         x: root.x;
-        y: root.y;
+        y: root.y + 1px;
         text: "Open";
         clicked => {
             open_dbc_file();
@@ -40,44 +42,57 @@ export component AppWindow inherits Window {
 
         main_page := Tab {
             title: "view";
-            if !root.is_filter:
-            ScrollView {
+            
+            Rectangle {
                 width: root.width;
-                height: root.height - 120px;
-                VerticalBox{
-                    width: root.width;
-                    for message in messages: CanMessage {
-                        message_id: message.can-id;
-                        message_name: message.packet-name;
-                        counter: message.counter;
-                        signals: message.signal-value;
+                height: root.height - button.height - 5px;
+                background: #c8c8cc;
+                if !root.is_filter:
+                ScrollView {
+                    VerticalLayout{
+                        width: root.width;
+                        for message in messages: CanMessage {
+                            message_id: message.can-id;
+                            message_name: message.packet-name;
+                            counter: message.counter;
+                            signals: message.signal-value;
+                            raw_data: message.raw-can;
+                            back_ground: message.color;
+                        }
                     }
                 }
-            }
-            if root.is_filter:
-            ScrollView {
-                width: root.width;
-                height: root.height - 120px;
-                
-                VerticalBox{
+                if root.is_filter:
+                ScrollView {
                     width: root.width;
-                    for message in filter_messages: CanMessage {
-                        message_id: message.can-id;
-                        message_name: message.packet-name;
-                        counter: message.counter;
-                        signals: message.signal-value;
+                    height: root.height - 120px;
+                    
+                    VerticalLayout{
+                        width: root.width;
+                        for message in filter_messages: CanMessage {
+                            message_id: message.can-id;
+                            message_name: message.packet-name;
+                            counter: message.counter;
+                            signals: message.signal-value;
+                            raw_data: message.raw-can;
+                            back_ground: message.color;
+                        }
                     }
                 }
             }
         }
         Select_page := Tab {
             title: "filter";
-            ScrollView {
-                VerticalBox{
-                    for message in messages: CheckBox {
-                        text: message.can-id + "(" + message.packet-name + ")";
-                        toggled => {
-                            filter_id(message, self.checked)
+            Rectangle {
+                width: root.width;
+                height: root.height - button.height - 5px;
+                background: #c8c8cc;
+                ScrollView {
+                    VerticalLayout{
+                        for message in messages: CheckBox {
+                            text: message.can-id + "(" + message.packet-name + ")";
+                            toggled => {
+                                filter_id(message, self.checked)
+                            }
                         }
                     }
                 }

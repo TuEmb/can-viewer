@@ -1,4 +1,4 @@
-use slint::Weak;
+use slint::{Color, Weak};
 use slint::{Model, VecModel};
 use std::rc::Rc;
 
@@ -16,12 +16,31 @@ impl<'a> PacketFilter<'a> {
         let mut list_filter: Vec<CanData> = ui.get_filter_messages().iter().collect();
         if self.is_check {
             // Add filter ID
-            list_filter.push(self.filter);
+            list_filter.push(CanData {
+                can_id: self.filter.can_id,
+                color: if list_filter.len() % 2 == 0 {
+                    Color::from_rgb_u8(0xc8, 0xc8, 0xcc)
+                } else {
+                    Color::from_rgb_u8(0xda, 0xda, 0xda)
+                },
+                counter: self.filter.counter,
+                packet_name: self.filter.packet_name,
+                raw_can: self.filter.raw_can,
+                signal_value: self.filter.signal_value,
+            });
         } else {
             // Remove filter ID
             for (filter_count, can_filter) in list_filter.clone().into_iter().enumerate() {
                 if can_filter.can_id == self.filter.can_id {
                     list_filter.remove(filter_count);
+                }
+
+                if filter_count % 2 == 0 {
+                    if let Some(data) = list_filter.get_mut(filter_count) {
+                        data.color = Color::from_rgb_u8(0xda, 0xda, 0xda);
+                    }
+                } else if let Some(data) = list_filter.get_mut(filter_count) {
+                    data.color = Color::from_rgb_u8(0xc8, 0xc8, 0xcc);
                 }
             }
         }
