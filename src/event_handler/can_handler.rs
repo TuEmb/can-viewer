@@ -18,12 +18,15 @@ pub struct CanHandler<'a> {
     pub mspc_rx: &'a Receiver<DBC>,
 }
 
+static mut NEW_DBC_CHECK: bool = false;
+
 impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
         if let Ok(dbc) = self.mspc_rx.try_recv() {
             let can_socket = self.open_can_socket();
             self.process_ui_events(dbc, can_socket);
         }
+        sleep(Duration::from_millis(10));
     }
 
     fn open_can_socket(&self) -> CanSocket {
@@ -42,10 +45,22 @@ impl<'a> CanHandler<'a> {
     }
 
     fn process_ui_events(&self, dbc: DBC, can_socket: CanSocket) {
-        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| loop {
-            if ui.get_is_new_dbc() {
-                ui.set_is_new_dbc(false);
-                break;
+        loop {
+            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
+                if ui.get_is_new_dbc() {
+                    if ui.get_is_first_open() {
+                        ui.set_is_first_open(false);
+                    } else {
+                        NEW_DBC_CHECK = true;
+                    }
+                    ui.set_is_new_dbc(false);
+                }
+            });
+            unsafe {
+                if NEW_DBC_CHECK {
+                    NEW_DBC_CHECK = false;
+                    break;
+                }
             }
             if let Ok(frame) = can_socket.read_frame() {
                 let frame_id = frame.raw_id() & !0x80000000;
@@ -54,17 +69,25 @@ impl<'a> CanHandler<'a> {
                         let padding_data = Self::pad_to_8_bytes(frame.data());
                         let hex_string = Self::array_to_hex_string(frame.data());
                         let signal_data = message.parse_from_can(&padding_data);
-                        let is_filter = ui.get_is_filter();
-                        let messages: ModelRc<CanData> = if !is_filter {
-                            ui.get_messages()
-                        } else {
-                            ui.get_filter_messages()
-                        };
-                        Self::update_ui_with_signals(&messages, frame_id, signal_data, hex_string);
+                        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                            let is_filter = ui.get_is_filter();
+                            let messages: ModelRc<CanData> = if !is_filter {
+                                ui.get_messages()
+                            } else {
+                                ui.get_filter_messages()
+                            };
+                            Self::update_ui_with_signals(
+                                &messages,
+                                frame_id,
+                                signal_data,
+                                hex_string,
+                            );
+                        });
                     }
                 }
             }
-        });
+            sleep(Duration::from_millis(1));
+        }
     }
 
     fn update_ui_with_signals(
@@ -74,7 +97,7 @@ impl<'a> CanHandler<'a> {
         raw_can: String,
     ) {
         for (message_count, message) in messages.iter().enumerate() {
-            if message.can_id == frame_id.to_string() {
+            if message.can_id == format!("{:08X}", frame_id) {
                 let can_signals = Self::create_can_signals(&message, &signal_data);
                 messages.set_row_data(
                     message_count,

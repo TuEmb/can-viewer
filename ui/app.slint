@@ -16,6 +16,7 @@ struct CanData {
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
     in property <bool> is_new_dbc: false;
+    in property <bool> is_first_open: true;
     in property <[CanData]> messages;
     in property <[CanData]> filter_messages;
 
