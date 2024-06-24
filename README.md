@@ -4,12 +4,13 @@
 - **can-viewer** is able to see real-time data on CAN bus and set a list of filter CAN IDs.
 - **can-viewer** is a open-source project and willing to receive any contribution from community.
 
-![image](https://github.com/TuEmb/can-viewer/assets/126753419/cb3469f8-a50f-48de-abed-46ce966b16c1)
+![image](https://github.com/TuEmb/can-viewer/assets/126753419/a9a28725-dd80-490f-9f17-c2bb94e8519f)
+
 
 
 The column format:
 ```
-<CAN ID> <signal name> <signal value> <unit> <factor>
+<CAN ID> <signal name> <signal value + unit> <raw data>
 ```
 
 # Setup
