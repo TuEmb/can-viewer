@@ -50,6 +50,7 @@ export component AppWindow inherits Window {
                 background: #c8c8cc;
                 if !root.is_filter:
                 ScrollView {
+                    has-focus:true;
                     VerticalLayout{
                         width: root.width;
                         for message in messages: CanMessage {
@@ -64,8 +65,7 @@ export component AppWindow inherits Window {
                 }
                 if root.is_filter:
                 ScrollView {
-                    width: root.width;
-                    height: root.height - 120px;
+                    has-focus:true;
                     
                     VerticalLayout{
                         width: root.width;

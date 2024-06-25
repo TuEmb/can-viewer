@@ -32,7 +32,10 @@ impl<'a> CanHandler<'a> {
     fn open_can_socket(&self) -> CanSocket {
         loop {
             match CanSocket::open(self.iface) {
-                Ok(socket) => break socket,
+                Ok(socket) => {
+                    let _ = socket.set_nonblocking(true);
+                    break socket;
+                }
                 Err(e) => {
                     println!(
                         "ERR: Failed to open socket {} - {}\nTry to re-connect...",
@@ -85,8 +88,9 @@ impl<'a> CanHandler<'a> {
                         });
                     }
                 }
+            } else {
+                sleep(Duration::from_millis(1));
             }
-            sleep(Duration::from_millis(1));
         }
     }
 
