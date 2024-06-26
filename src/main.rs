@@ -12,7 +12,7 @@ fn main() -> io::Result<()> {
     // Find available socket CAN
     let socket_if = match available_interfaces() {
         Ok(interface) => {
-            if interface.len() == 0 {
+            if interface.is_empty() {
                 println!("ERR: Can't find any socket can interfaces: length is 0");
                 return Ok(());
             } else {
