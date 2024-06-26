@@ -2,11 +2,37 @@ use std::io;
 use std::sync::mpsc;
 
 mod event_handler;
+use dialoguer::{theme::ColorfulTheme, Select};
 use event_handler::{CanHandler, DBCFile, PacketFilter};
+use socketcan::available_interfaces;
 
 slint::include_modules!();
 
 fn main() -> io::Result<()> {
+    // Find available socket CAN
+    let socket_if = match available_interfaces() {
+        Ok(interface) => {
+            if interface.len() == 0 {
+                println!("ERR: Can't find any socket can interfaces: length is 0");
+                return Ok(());
+            } else {
+                interface
+            }
+        }
+        Err(e) => {
+            println!("ERR: Can't find any socket can interfaces: {}", e);
+            return Ok(());
+        }
+    };
+
+    // Create and selectable list for socket CAN
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Choose an socket CAN interface:")
+        .items(&socket_if[..])
+        .default(0)
+        .interact()
+        .unwrap();
+
     let ui = AppWindow::new().unwrap();
     let (tx, rx) = mpsc::channel();
 
@@ -26,7 +52,7 @@ fn main() -> io::Result<()> {
     let ui_handle = ui.as_weak();
     std::thread::spawn(move || {
         let mut can_handler = CanHandler {
-            iface: "can0",
+            iface: &socket_if[selection],
             ui_handle: &ui_handle,
             mspc_rx: &rx,
         };

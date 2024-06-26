@@ -5,9 +5,10 @@ edition = "2021"
 
 [dependencies]
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
-socketcan = "3.3.0"
+socketcan = { git = "https://github.com/socketcan-rs/socketcan-rs.git", branch="master", features = ["enumerate"] }
 rfd = "0.14.1"
 slint = { version = "1.6.0", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
+dialoguer = "0.11.0"
 
 
 [build-dependencies]
