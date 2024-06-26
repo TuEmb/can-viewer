@@ -51,6 +51,8 @@ export component AppWindow inherits Window {
                 if !root.is_filter:
                 ScrollView {
                     has-focus:true;
+                    viewport-width: root.width;
+                    viewport-height: messages.length * 200px;
                     VerticalLayout{
                         width: root.width;
                         for message in messages: CanMessage {
@@ -66,7 +68,8 @@ export component AppWindow inherits Window {
                 if root.is_filter:
                 ScrollView {
                     has-focus:true;
-                    
+                    viewport-width: root.width;
+                    viewport-height: filter_messages.length * 200px;
                     VerticalLayout{
                         width: root.width;
                         for message in filter_messages: CanMessage {
@@ -88,6 +91,8 @@ export component AppWindow inherits Window {
                 height: root.height - button.height - 5px;
                 background: #c8c8cc;
                 ScrollView {
+                    viewport-width: root.width;
+                    viewport-height: messages.length * 40px;
                     VerticalLayout{
                         for message in messages: CheckBox {
                             text: message.can-id + "(" + message.packet-name + ")";

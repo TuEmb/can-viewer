@@ -7,7 +7,8 @@ edition = "2021"
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
 socketcan = "3.3.0"
 rfd = "0.14.1"
-slint = "1.6.0"
+slint = { version = "1.6.0", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
+
 
 [build-dependencies]
 slint-build = "1.6.0"

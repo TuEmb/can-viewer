@@ -22,6 +22,7 @@ export component CanMessage inherits Rectangle {
         {signal_name: "signal_6", signal_value: "10", unit: "Volt", factor: "1.0"},
         {signal_name: "signal_7", signal_value: "1", unit: "mA", factor: "1.0"}];
     background: root.back_ground;
+    height: (signals.length < 3)? 75px: signals.length * 25px;
 
     HorizontalLayout{
         Rectangle {
