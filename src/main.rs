@@ -4,9 +4,12 @@ use std::sync::mpsc;
 mod event_handler;
 #[cfg(target_os = "linux")]
 use dialoguer::{theme::ColorfulTheme, Select};
-use event_handler::{can_handler::PcanDriver, CanHandler, DBCFile, PacketFilter};
+#[cfg(target_os = "linux")]
+use event_handler::{CanHandler, DBCFile, PacketFilter};
 #[cfg(target_os = "linux")]
 use socketcan::available_interfaces;
+#[cfg(target_os = "windows")]
+use event_handler::can_handler::PcanDriver;
 
 slint::include_modules!();
 

@@ -45,7 +45,11 @@ impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
         if let Ok(dbc) = self.mspc_rx.try_recv() {
             #[cfg(target_os = "linux")]
-            let can_socket = self.open_can_socket();
+            {
+                let can_socket = self.open_can_socket();
+                self.process_ui_events(dbc, can_socket);
+            }
+            #[cfg(target_os = "windows")]
             self.process_ui_events(dbc);
         }
         sleep(Duration::from_millis(10));
