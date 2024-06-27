@@ -5,11 +5,16 @@ edition = "2021"
 
 [dependencies]
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
-socketcan = { git = "https://github.com/socketcan-rs/socketcan-rs.git", branch="master", features = ["enumerate"] }
 rfd = "0.14.1"
 slint = { version = "1.6.0", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
-dialoguer = "0.11.0"
 
+[target.'cfg(windows)'.dependencies]
+embedded-can = "0.3.0"
+pcan-basic = { git = "https://github.com/TuEmb/pcan-basic-rs.git", branch="master"}
+
+[target.'cfg(unix)'.dependencies]
+dialoguer = "0.11.0"
+socketcan = { git = "https://github.com/socketcan-rs/socketcan-rs.git", branch="master", features = ["enumerate"] }
 
 [build-dependencies]
 slint-build = "1.6.0"

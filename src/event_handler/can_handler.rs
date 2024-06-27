@@ -1,6 +1,7 @@
 use can_dbc::DBC;
 use slint::{Color, Model, VecModel, Weak};
 use slint::{ModelRc, SharedString};
+#[cfg(target_os = "linux")]
 use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
 use std::collections::HashMap;
 use std::fmt::Write;
@@ -13,22 +14,43 @@ use crate::slint_generatedAppWindow::AppWindow;
 use crate::slint_generatedAppWindow::CanData;
 use crate::slint_generatedAppWindow::CanSignal;
 pub struct CanHandler<'a> {
+    #[cfg(target_os = "linux")]
     pub iface: &'a str,
+    #[cfg(target_os = "windows")]
+    pub iface: PcanDriver<Interface>,
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_rx: &'a Receiver<DBC>,
 }
 
 static mut NEW_DBC_CHECK: bool = false;
 
+#[cfg(target_os = "windows")]
+use embedded_can::Frame;
+#[cfg(target_os = "windows")]
+use pcan_basic::{self, Interface};
+#[cfg(target_os = "windows")]
+pub struct PcanDriver<Can>(pub Can);
+#[cfg(target_os = "windows")]
+impl<Can> PcanDriver<Can>
+where
+    Can: embedded_can::blocking::Can,
+    Can::Error: core::fmt::Debug,
+{
+    pub fn read_frame(&mut self) -> Result<Can::Frame, Can::Error> {
+        self.0.try_read()
+    }
+}
+
 impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
         if let Ok(dbc) = self.mspc_rx.try_recv() {
+            #[cfg(target_os = "linux")]
             let can_socket = self.open_can_socket();
-            self.process_ui_events(dbc, can_socket);
+            self.process_ui_events(dbc);
         }
         sleep(Duration::from_millis(10));
     }
-
+    #[cfg(target_os = "linux")]
     fn open_can_socket(&self) -> CanSocket {
         loop {
             match CanSocket::open(self.iface) {
@@ -46,7 +68,7 @@ impl<'a> CanHandler<'a> {
             }
         }
     }
-
+    #[cfg(target_os = "linux")]
     fn process_ui_events(&self, dbc: DBC, can_socket: CanSocket) {
         loop {
             let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
@@ -67,6 +89,57 @@ impl<'a> CanHandler<'a> {
             }
             if let Ok(frame) = can_socket.read_frame() {
                 let frame_id = frame.raw_id() & !0x80000000;
+                for message in dbc.messages() {
+                    if frame_id == (message.message_id().raw() & !0x80000000) {
+                        let padding_data = Self::pad_to_8_bytes(frame.data());
+                        let hex_string = Self::array_to_hex_string(frame.data());
+                        let signal_data = message.parse_from_can(&padding_data);
+                        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                            let is_filter = ui.get_is_filter();
+                            let messages: ModelRc<CanData> = if !is_filter {
+                                ui.get_messages()
+                            } else {
+                                ui.get_filter_messages()
+                            };
+                            Self::update_ui_with_signals(
+                                &messages,
+                                frame_id,
+                                signal_data,
+                                hex_string,
+                            );
+                        });
+                    }
+                }
+            } else {
+                sleep(Duration::from_millis(10));
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    fn process_ui_events(&mut self, dbc: DBC) {
+        loop {
+            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
+                if ui.get_is_new_dbc() {
+                    if ui.get_is_first_open() {
+                        ui.set_is_first_open(false);
+                    } else {
+                        NEW_DBC_CHECK = true;
+                    }
+                    ui.set_is_new_dbc(false);
+                }
+            });
+            unsafe {
+                if NEW_DBC_CHECK {
+                    NEW_DBC_CHECK = false;
+                    break;
+                }
+            }
+            if let Ok(frame) = self.iface.read_frame() {
+                let id = match frame.id() {
+                    pcan_basic::Id::Standard(std_id) => std_id.as_raw() as u32,
+                    pcan_basic::Id::Extended(ext_id) => ext_id.as_raw(),
+                };
+                let frame_id = id & !0x80000000;
                 for message in dbc.messages() {
                     if frame_id == (message.message_id().raw() & !0x80000000) {
                         let padding_data = Self::pad_to_8_bytes(frame.data());

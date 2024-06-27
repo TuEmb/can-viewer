@@ -2,14 +2,17 @@ use std::io;
 use std::sync::mpsc;
 
 mod event_handler;
+#[cfg(target_os = "linux")]
 use dialoguer::{theme::ColorfulTheme, Select};
-use event_handler::{CanHandler, DBCFile, PacketFilter};
+use event_handler::{can_handler::PcanDriver, CanHandler, DBCFile, PacketFilter};
+#[cfg(target_os = "linux")]
 use socketcan::available_interfaces;
 
 slint::include_modules!();
 
 fn main() -> io::Result<()> {
     // Find available socket CAN
+    #[cfg(target_os = "linux")]
     let socket_if = match available_interfaces() {
         Ok(interface) => {
             if interface.is_empty() {
@@ -26,12 +29,26 @@ fn main() -> io::Result<()> {
     };
 
     // Create and selectable list for socket CAN
+    #[cfg(target_os = "linux")]
     let selection = Select::with_theme(&ColorfulTheme::default())
         .with_prompt("Choose an socket CAN interface:")
         .items(&socket_if[..])
         .default(0)
         .interact()
         .unwrap();
+    #[cfg(target_os = "windows")]
+    {
+        let can_interface = pcan_basic::Interface::init(0x011C);
+        match can_interface {
+            Ok(can) => {
+                drop(can);
+            }
+            Err(e) => {
+                println!("ERROR: Can't find any PCAN interface input: {}", e);
+                return Ok(());
+            }
+        }
+    }
 
     let ui = AppWindow::new().unwrap();
     let (tx, rx) = mpsc::channel();
@@ -51,8 +68,24 @@ fn main() -> io::Result<()> {
     // update to UI the signal - value
     let ui_handle = ui.as_weak();
     std::thread::spawn(move || {
+        #[cfg(target_os = "windows")]
+        let can_interface = loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            match pcan_basic::Interface::init(0x011C) {
+                Ok(can_if) => break PcanDriver(can_if),
+                Err(e) => {
+                    println!("ERR: Can't find any PCAN Interface: {}", e);
+                    println!("Trying to reconnect ...");
+                    continue;
+                }
+            }
+        };
+
         let mut can_handler = CanHandler {
+            #[cfg(target_os = "linux")]
             iface: &socket_if[selection],
+            #[cfg(target_os = "windows")]
+            iface: can_interface,
             ui_handle: &ui_handle,
             mspc_rx: &rx,
         };
