@@ -26,5 +26,14 @@ cargo build --release
 ```
 cargo run --release
 ```
-## Window (not support)
+## Window
+**can-viewer** is support Peak CAN for window only
+- Build the app by command:
+```
+cargo build --release
+```
+- Run the app by command:
+```
+cargo run --release
+```
 ## IOS (not support)
