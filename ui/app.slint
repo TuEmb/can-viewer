@@ -1,7 +1,7 @@
 import { ComboBox, Button, VerticalBox, CheckBox, GroupBox } from "std-widgets.slint";
 import { TextEdit } from "std-widgets.slint";
 import { AboutSlint, Palette, Slider, HorizontalBox } from "std-widgets.slint";
-import { LineEdit, StandardButton, ScrollView, TabWidget } from "std-widgets.slint";
+import { LineEdit, StandardButton, ScrollView, TabWidget, ListView } from "std-widgets.slint";
 import { CanMessage, CanSignal } from "messages.slint";
 
 struct CanData {
@@ -49,37 +49,31 @@ export component AppWindow inherits Window {
                 height: root.height - button.height - 5px;
                 background: #c8c8cc;
                 if !root.is_filter:
-                ScrollView {
-                    has-focus:true;
+                ListView {
                     viewport-width: root.width;
                     viewport-height: messages.length * 200px;
-                    VerticalLayout{
-                        width: root.width;
-                        for message in messages: CanMessage {
-                            message_id: message.can-id;
-                            message_name: message.packet-name;
-                            counter: message.counter;
-                            signals: message.signal-value;
-                            raw_data: message.raw-can;
-                            back_ground: message.color;
-                        }
+                    width: root.width;
+                    for message in messages: CanMessage {
+                        message_id: message.can-id;
+                        message_name: message.packet-name;
+                        counter: message.counter;
+                        signals: message.signal-value;
+                        raw_data: message.raw-can;
+                        back_ground: message.color;
                     }
                 }
                 if root.is_filter:
-                ScrollView {
-                    has-focus:true;
+                ListView {
                     viewport-width: root.width;
                     viewport-height: filter_messages.length * 200px;
-                    VerticalLayout{
-                        width: root.width;
-                        for message in filter_messages: CanMessage {
-                            message_id: message.can-id;
-                            message_name: message.packet-name;
-                            counter: message.counter;
-                            signals: message.signal-value;
-                            raw_data: message.raw-can;
-                            back_ground: message.color;
-                        }
+                    width: root.width;
+                    for message in filter_messages: CanMessage {
+                        message_id: message.can-id;
+                        message_name: message.packet-name;
+                        counter: message.counter;
+                        signals: message.signal-value;
+                        raw_data: message.raw-can;
+                        back_ground: message.color;
                     }
                 }
             }

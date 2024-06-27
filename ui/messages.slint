@@ -7,7 +7,7 @@ export struct CanSignal {
     factor: string,
 }
 
-export component CanMessage inherits Rectangle {
+export component CanMessage inherits VerticalLayout {
     in property <string> message_id: "0x00000000";
     in property <string> raw_data: "0x01 0x02 0x03 0x04";
     in property <string> message_name: "packet_xxx";
@@ -21,51 +21,52 @@ export component CanMessage inherits Rectangle {
         {signal_name: "signal_5", signal_value: "20.9", unit: "A", factor: "1.0"},
         {signal_name: "signal_6", signal_value: "10", unit: "Volt", factor: "1.0"},
         {signal_name: "signal_7", signal_value: "1", unit: "mA", factor: "1.0"}];
-    background: root.back_ground;
-    height: (signals.length < 3)? 75px: signals.length * 25px;
-
-    HorizontalLayout{
-        Rectangle {
-            width: root.width * 20%;
-            border-color: black;
-            border-width: 0.75px;
-            Text {
-                text: root.message_id + "\n" + root.message_name + "\n" + root.counter;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }   
-        }
-    
-        VerticalLayout {
-            for signal in signals: HorizontalLayout { 
-                Rectangle {
-                    width: root.width * 25%;
-                    border-color: black;
-                    border-width: 0.75px;
-                    Text {
-                        text: signal.signal_name;
-                    }  
-                }
-                Rectangle {
-                    width: root.width * 15%;
-                    border-color: black;
-                    border-width: 0.75px;
-                    Text {
-                        text: signal.signal_value + " " + signal.unit;
-                    }  
+        height: (signals.length < 3)? 75px: signals.length * 25px;
+    Rectangle {
+        background: root.back_ground;
+        HorizontalLayout{
+            Rectangle {
+                width: root.width * 20%;
+                border-color: black;
+                border-width: 0.75px;
+                Text {
+                    text: root.message_id + "\n" + root.message_name + "\n" + root.counter;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }   
+            }
+        
+            VerticalLayout {
+                for signal in signals: HorizontalLayout { 
+                    Rectangle {
+                        width: root.width * 25%;
+                        border-color: black;
+                        border-width: 0.75px;
+                        Text {
+                            text: signal.signal_name;
+                        }  
+                    }
+                    Rectangle {
+                        width: root.width * 15%;
+                        border-color: black;
+                        border-width: 0.75px;
+                        Text {
+                            text: signal.signal_value + " " + signal.unit;
+                        }  
+                    }
                 }
             }
-        }
-    
-        Rectangle {
-            width: root.width * 40%;
-            border-color: black;
-            border-width: 0.75px;
-            Text {
-                text: root.raw_data;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }   
+        
+            Rectangle {
+                width: root.width * 40%;
+                border-color: black;
+                border-width: 0.75px;
+                Text {
+                    text: root.raw_data;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }   
+            }
         }
     }
 }
