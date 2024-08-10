@@ -1,0 +1,32 @@
+
+export component selectPage inherits Rectangle {
+    in-out property <string> text;
+    in-out property <bool> is_selected;
+    callback selected();
+
+    background: is_selected?#181c27:#54575e;
+
+    states [
+        pressed when touch-area.pressed : {
+            background: #181c27;
+        }
+
+        hover when touch-area.has-hover: {
+            background: #54575e.darker(0.4);
+        }
+    ]
+
+    Text {
+        text: root.text;
+        color: white;
+    }
+
+    touch-area := TouchArea {
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                is_selected = true;
+                selected();
+            }
+        }
+    }
+}

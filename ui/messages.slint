@@ -7,6 +7,15 @@ export struct CanSignal {
     factor: string,
 }
 
+export struct CanData {
+    can_id: string,
+    packet_name: string,
+    raw_can: string,
+    counter: int,
+    signal_value: [CanSignal],
+    color: color
+}
+
 export component CanMessage inherits VerticalLayout {
     in property <string> message_id: "0x00000000";
     in property <string> raw_data: "0x01 0x02 0x03 0x04";

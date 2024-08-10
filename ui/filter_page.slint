@@ -1,0 +1,24 @@
+
+
+import { ScrollView, CheckBox } from "std-widgets.slint";
+import { CanData } from "messages.slint";
+
+export component filterPage inherits Rectangle {
+    background: #c8c8cc;
+    in-out property <[CanData]> messages;
+    in-out property <int> page-num;
+    callback filter_id(CanData, bool);
+
+    ScrollView {
+        viewport-width: root.width;
+        viewport-height: messages.length * 40px;
+        VerticalLayout{
+            for message in messages: CheckBox {
+                text: message.can-id + "(" + message.packet-name + ")";
+                toggled => {
+                    filter_id(message, self.checked)
+                }
+            }
+        }
+    }
+}

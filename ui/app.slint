@@ -2,16 +2,10 @@ import { ComboBox, Button, VerticalBox, CheckBox, GroupBox } from "std-widgets.s
 import { TextEdit } from "std-widgets.slint";
 import { AboutSlint, Palette, Slider, HorizontalBox } from "std-widgets.slint";
 import { LineEdit, StandardButton, ScrollView, TabWidget, ListView } from "std-widgets.slint";
-import { CanMessage, CanSignal } from "messages.slint";
-
-struct CanData {
-    can_id: string,
-    packet_name: string,
-    raw_can: string,
-    counter: int,
-    signal_value: [CanSignal],
-    color: color
-}
+import { CanData, CanMessage, CanSignal } from "messages.slint";
+import { viewPage } from "view_page.slint";
+import { filterPage } from "filter_page.slint";
+import { selectPage } from "page_selection.slint";
 
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
@@ -20,6 +14,8 @@ export component AppWindow inherits Window {
     in property <[CanData]> messages;
     in property <[CanData]> filter_messages;
 
+    in-out property <int> active-page: 0;
+
     callback open_dbc_file();
     callback filter_id(CanData, bool);
     title: @tr("CAN VIEWER (version 0.1.0)");
@@ -27,75 +23,70 @@ export component AppWindow inherits Window {
     background: #555555;
     default-font-family: "Noto Sans";
     default-font-size: 12px;
+    preferred-height: 600px;
+    preferred-width: 800px;
 
-    button := Button {
-        x: root.x;
-        y: root.y + 1px;
-        text: "Open";
-        clicked => {
-            open_dbc_file();
-        }
-    }
-
-    TabWidget {
-        x: root.x + button.width;
-        y: root.y;
-        width: root.width - 2*button.width;
-
-        main_page := Tab {
-            title: "view";
-            
-            Rectangle {
-                width: root.width;
-                height: root.height - button.height - 5px;
-                background: #c8c8cc;
-                if !root.is_filter:
-                ListView {
-                    viewport-width: root.width;
-                    viewport-height: messages.length * 200px;
-                    width: root.width;
-                    for message in messages: CanMessage {
-                        message_id: message.can-id;
-                        message_name: message.packet-name;
-                        counter: message.counter;
-                        signals: message.signal-value;
-                        raw_data: message.raw-can;
-                        back_ground: message.color;
-                    }
+    VerticalLayout {
+        HorizontalLayout {
+            view_selection := selectPage {
+                min-height: 25px;
+                text: "view";
+                is_selected: true;
+                selected => {
+                    filter-selection.is_selected = false;
+                    debug-selection.is_selected = false;
+                    chart-selection.is_selected = false;
+                    active-page = 0;
                 }
-                if root.is_filter:
-                ListView {
-                    viewport-width: root.width;
-                    viewport-height: filter_messages.length * 200px;
-                    width: root.width;
-                    for message in filter_messages: CanMessage {
-                        message_id: message.can-id;
-                        message_name: message.packet-name;
-                        counter: message.counter;
-                        signals: message.signal-value;
-                        raw_data: message.raw-can;
-                        back_ground: message.color;
-                    }
+            }
+            filter_selection := selectPage {
+                text: "filter";
+                is_selected: false;
+                selected => {
+                    view-selection.is_selected = false;
+                    debug-selection.is_selected = false;
+                    chart-selection.is_selected = false;
+                    active-page = 1;
+                }
+            }
+            debug_selection := selectPage {
+                text: "debug";
+                is_selected: false;
+                selected => {
+                    filter-selection.is_selected = false;
+                    view-selection.is_selected = false;
+                    chart-selection.is_selected = false;
+                    active-page = 2;
+                }
+            }
+            chart_selection := selectPage {
+                text: "chart";
+                is_selected: false;
+                selected => {
+                    filter-selection.is_selected = false;
+                    debug-selection.is_selected = false;
+                    view-selection.is_selected = false;
+                    active-page = 3;
                 }
             }
         }
-        Select_page := Tab {
-            title: "filter";
-            Rectangle {
-                width: root.width;
-                height: root.height - button.height - 5px;
-                background: #c8c8cc;
-                ScrollView {
-                    viewport-width: root.width;
-                    viewport-height: messages.length * 40px;
-                    VerticalLayout{
-                        for message in messages: CheckBox {
-                            text: message.can-id + "(" + message.packet-name + ")";
-                            toggled => {
-                                filter_id(message, self.checked)
-                            }
-                        }
-                    }
+        Rectangle {
+            if root.active-page == 0:
+            viewPage {
+                page-num: 0;
+                is_filter: root.is_filter;
+                messages: root.messages;
+                filter_messages: root.filter_messages;
+                open_dbc_file() => {
+                    open_dbc_file()
+                }
+            }
+            if root.active-page == 1:
+            filterPage {
+                page-num: 1;
+                messages: root.messages;
+                filter_id(can_data, checked) => {
+                    filter_id(can_data, checked);
                 }
             }
         }

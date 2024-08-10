@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
 rfd = "0.14.1"
-slint = { version = "1.6.0", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
+slint = { version = "1.7.1", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
 
 [target.'cfg(windows)'.dependencies]
 embedded-can = "0.3.0"
@@ -14,7 +14,7 @@ pcan-basic = { git = "https://github.com/TuEmb/pcan-basic-rs.git", branch="maste
 
 [target.'cfg(unix)'.dependencies]
 dialoguer = "0.11.0"
-socketcan = { git = "https://github.com/socketcan-rs/socketcan-rs.git", branch="master", features = ["enumerate"] }
+socketcan = { git = "https://github.com/socketcan-rs/socketcan-rs.git", rev="e0d7760eca8085b247f37ea22f0aa41e00fa25fa", features = ["enumerate"] }
 
 [build-dependencies]
-slint-build = "1.6.0"
+slint-build = "1.7.1"
