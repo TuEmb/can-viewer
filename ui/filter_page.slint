@@ -1,23 +1,73 @@
 
 
-import { ScrollView, CheckBox } from "std-widgets.slint";
+import { ScrollView, CheckBox, ListView } from "std-widgets.slint";
 import { CanData } from "messages.slint";
 
+export component MyCheckBox inherits Rectangle {
+    in-out property <bool> checked;
+    in-out property <bool> enabled: true;
+    in-out property <string> text: "Check me";
+    callback toggled(bool);
+
+    states [
+        pressed when touch-area.pressed : {
+            background: #181c27;
+        }
+
+        hover when touch-area.has-hover: {
+            background: #181c27.darker(0.4);
+        }
+    ]
+
+    VerticalLayout {
+        Rectangle {
+            height: 5px;
+        }
+        HorizontalLayout {
+            Rectangle {
+                width: 10px;
+            }
+            Rectangle {
+                width: 20px;
+                height: 20px;
+                border-radius: 5px;
+                border-color: white;
+                border-width: 1px;
+                background: checked?#ffffff:transparent;
+            }
+            Text {
+                text: text;
+                color: white;
+            }
+        }
+        Rectangle {
+            height: 5px;
+        }
+    }
+    touch-area := TouchArea {
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down && enabled) {
+                checked = !checked;
+                toggled(checked);
+            }
+        }
+    }
+}
+
 export component filterPage inherits Rectangle {
-    background: #c8c8cc;
     in-out property <[CanData]> messages;
     in-out property <int> page-num;
+    in-out property <bool> is_visible: false;
     callback filter_id(CanData, bool);
-
-    ScrollView {
-        viewport-width: root.width;
-        viewport-height: messages.length * 40px;
-        VerticalLayout{
-            for message in messages: CheckBox {
-                text: message.can-id + "(" + message.packet-name + ")";
-                toggled => {
-                    filter_id(message, self.checked)
-                }
+    
+    opacity: is_visible?1:0;
+    ListView{
+        enabled: is_visible?true:false;
+        for message in messages: MyCheckBox {
+            enabled: is_visible?true:false;
+            text: message.can-id + "(" + message.packet-name + ")";
+            toggled => {
+                filter_id(message, self.checked)
             }
         }
     }

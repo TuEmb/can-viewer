@@ -1,6 +1,6 @@
 use can_dbc::DBC;
 use rfd::FileDialog;
-use slint::{Color, Model, VecModel};
+use slint::{Model, VecModel};
 use slint::{ModelRc, SharedString, Weak};
 use std::fs::File;
 use std::io::Read;
@@ -11,6 +11,8 @@ use std::sync::mpsc::Sender;
 use crate::slint_generatedAppWindow::AppWindow;
 use crate::slint_generatedAppWindow::CanData;
 use crate::slint_generatedAppWindow::CanSignal;
+
+use super::{EVEN_COLOR, ODD_COLOR};
 pub struct DBCFile<'a> {
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_tx: &'a Sender<DBC>,
@@ -36,7 +38,7 @@ impl<'a> DBCFile<'a> {
                         signal_value: ModelRc::default(),
                         counter: 0,
                         raw_can: SharedString::from("default"),
-                        color: Color::from_rgb_u8(0xc8, 0xc8, 0xcc),
+                        color: ODD_COLOR,
                     }]
                     .to_vec(),
                 ));
@@ -77,9 +79,9 @@ impl<'a> DBCFile<'a> {
                         counter: 0,
                         raw_can: SharedString::from(""),
                         color: if message_count % 2 == 0 {
-                            Color::from_rgb_u8(0xc8, 0xc8, 0xcc)
+                            EVEN_COLOR
                         } else {
-                            Color::from_rgb_u8(0xda, 0xda, 0xda)
+                            ODD_COLOR
                         },
                     };
 

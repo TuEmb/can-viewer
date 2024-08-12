@@ -1,5 +1,5 @@
 use can_dbc::DBC;
-use slint::{Color, Model, VecModel, Weak};
+use slint::{Model, VecModel, Weak};
 use slint::{ModelRc, SharedString};
 #[cfg(target_os = "linux")]
 use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
@@ -28,6 +28,8 @@ static mut NEW_DBC_CHECK: bool = false;
 use embedded_can::Frame;
 #[cfg(target_os = "windows")]
 use pcan_basic::{self, Interface};
+
+use super::{EVEN_COLOR, ODD_COLOR};
 #[cfg(target_os = "windows")]
 pub struct PcanDriver<Can>(pub Can);
 #[cfg(target_os = "windows")]
@@ -189,9 +191,9 @@ impl<'a> CanHandler<'a> {
                         counter: message.counter + 1,
                         raw_can: raw_can.into(),
                         color: if message_count % 2 == 0 {
-                            Color::from_rgb_u8(0xc8, 0xc8, 0xcc)
+                            EVEN_COLOR
                         } else {
-                            Color::from_rgb_u8(0xda, 0xda, 0xda)
+                            ODD_COLOR
                         },
                     },
                 );

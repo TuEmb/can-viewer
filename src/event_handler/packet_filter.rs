@@ -1,9 +1,11 @@
-use slint::{Color, Weak};
+use slint::Weak;
 use slint::{Model, VecModel};
 use std::rc::Rc;
 
 use crate::slint_generatedAppWindow::AppWindow;
 use crate::slint_generatedAppWindow::CanData;
+
+use super::{EVEN_COLOR, ODD_COLOR};
 pub struct PacketFilter<'a> {
     pub ui_handle: &'a Weak<AppWindow>,
     pub filter: CanData,
@@ -19,9 +21,9 @@ impl<'a> PacketFilter<'a> {
             list_filter.push(CanData {
                 can_id: self.filter.can_id,
                 color: if list_filter.len() % 2 == 0 {
-                    Color::from_rgb_u8(0xc8, 0xc8, 0xcc)
+                    EVEN_COLOR
                 } else {
-                    Color::from_rgb_u8(0xda, 0xda, 0xda)
+                    ODD_COLOR
                 },
                 counter: self.filter.counter,
                 packet_name: self.filter.packet_name,
@@ -37,10 +39,10 @@ impl<'a> PacketFilter<'a> {
 
                 if filter_count % 2 == 0 {
                     if let Some(data) = list_filter.get_mut(filter_count) {
-                        data.color = Color::from_rgb_u8(0xda, 0xda, 0xda);
+                        data.color = ODD_COLOR;
                     }
                 } else if let Some(data) = list_filter.get_mut(filter_count) {
-                    data.color = Color::from_rgb_u8(0xc8, 0xc8, 0xcc);
+                    data.color = EVEN_COLOR;
                 }
             }
         }

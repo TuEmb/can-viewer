@@ -3,19 +3,25 @@ import { ListView, Button } from "std-widgets.slint";
 import { CanMessage } from "messages.slint";
 import { CanData } from "messages.slint";
 export component viewPage inherits Rectangle {
-
     in-out property <bool> is_filter;
     in-out property <[CanData]> messages;
     in-out property <[CanData]> filter_messages;
     in-out property <int> page-num;
     callback open_dbc_file();
-    background: #c8c8cc;
     VerticalLayout {
-        button := Button {
-            text: "Open";
-            clicked => {
-                open_dbc_file();
+        HorizontalLayout {
+            button := Button {
+                max-width: 50px;
+                text: "Open";
+                clicked => {
+                    open_dbc_file();
+                }
             }
+            Rectangle {}
+        }
+        Rectangle {
+            height: 1px;
+            background: white;
         }
         if !root.is_filter:
         ListView {

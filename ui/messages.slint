@@ -32,16 +32,17 @@ export component CanMessage inherits VerticalLayout {
         {signal_name: "signal_7", signal_value: "1", unit: "mA", factor: "1.0"}];
         height: (signals.length < 3)? 75px: signals.length * 25px;
     Rectangle {
-        background: root.back_ground;
+        background: back_ground;
         HorizontalLayout{
             Rectangle {
                 width: root.width * 20%;
-                border-color: black;
-                border-width: 0.75px;
+                border-color: white;
+                border-width: 0.25px;
                 Text {
                     text: root.message_id + "\n" + root.message_name + "\n" + root.counter;
                     horizontal-alignment: center;
                     vertical-alignment: center;
+                    color: white;
                 }   
             }
         
@@ -49,18 +50,20 @@ export component CanMessage inherits VerticalLayout {
                 for signal in signals: HorizontalLayout { 
                     Rectangle {
                         width: root.width * 25%;
-                        border-color: black;
-                        border-width: 0.75px;
+                        border-color: white;
+                        border-width: 0.25px;
                         Text {
                             text: signal.signal_name;
+                            color: white;
                         }  
                     }
                     Rectangle {
                         width: root.width * 15%;
-                        border-color: black;
-                        border-width: 0.75px;
+                        border-color: white;
+                        border-width: 0.25px;
                         Text {
                             text: signal.signal_value + " " + signal.unit;
+                            color: white;
                         }  
                     }
                 }
@@ -68,12 +71,13 @@ export component CanMessage inherits VerticalLayout {
         
             Rectangle {
                 width: root.width * 40%;
-                border-color: black;
-                border-width: 0.75px;
+                border-color: white;
+                border-width: 0.25px;
                 Text {
                     text: root.raw_data;
                     horizontal-alignment: center;
                     vertical-alignment: center;
+                    color: white;
                 }   
             }
         }

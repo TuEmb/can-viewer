@@ -20,7 +20,7 @@ export component AppWindow inherits Window {
     callback filter_id(CanData, bool);
     title: @tr("CAN VIEWER (version 0.1.0)");
     icon: @image-url("images/can-viewer.png");
-    background: #555555;
+    background: #1a1f2b;
     default-font-family: "Noto Sans";
     default-font-size: 12px;
     preferred-height: 600px;
@@ -71,6 +71,14 @@ export component AppWindow inherits Window {
             }
         }
         Rectangle {
+            filterPage {
+                is_visible: root.active-page == 1;
+                page-num: 1;
+                messages: root.messages;
+                filter_id(can_data, checked) => {
+                    filter_id(can_data, checked);
+                }
+            }
             if root.active-page == 0:
             viewPage {
                 page-num: 0;
@@ -79,14 +87,6 @@ export component AppWindow inherits Window {
                 filter_messages: root.filter_messages;
                 open_dbc_file() => {
                     open_dbc_file()
-                }
-            }
-            if root.active-page == 1:
-            filterPage {
-                page-num: 1;
-                messages: root.messages;
-                filter_id(can_data, checked) => {
-                    filter_id(can_data, checked);
                 }
             }
         }
