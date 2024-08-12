@@ -2,10 +2,9 @@
 
 - **can-viewer** is a tool support showing can packets based on DBC input file using Rust + Slint.
 - **can-viewer** is able to see real-time data on CAN bus and set a list of filter CAN IDs.
-- **can-viewer** is a open-source project and willing to receive any contribution from community.
+- **can-viewer** is an open-source project and willing to receive any contributions from community.
 
-![image](https://github.com/TuEmb/can-viewer/assets/126753419/a9a28725-dd80-490f-9f17-c2bb94e8519f)
-
+![image](https://github.com/user-attachments/assets/963712eb-a0ba-471d-9d14-9b3f483e0cbf)
 
 
 The column format:
@@ -27,7 +26,7 @@ cargo build --release
 cargo run --release
 ```
 ## Window
-**can-viewer** is support Peak CAN for window only
+**can-viewer** is supporting Peak CAN for window only
 - Build the app by command:
 ```
 cargo build --release
