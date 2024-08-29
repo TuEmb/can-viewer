@@ -9,7 +9,8 @@ use event_handler::can_handler::PcanDriver;
 use event_handler::{CanHandler, DBCFile, PacketFilter};
 #[cfg(target_os = "linux")]
 use socketcan::available_interfaces;
-
+#[cfg(target_os = "windows")]
+use winapi::um::wincon::FreeConsole;
 slint::include_modules!();
 
 fn main() -> io::Result<()> {
@@ -40,6 +41,9 @@ fn main() -> io::Result<()> {
         .unwrap();
     #[cfg(target_os = "windows")]
     {
+        unsafe {
+            FreeConsole(); // This detaches the console from the application
+        }
         let can_interface = pcan_basic::Interface::init(0x011C);
         match can_interface {
             Ok(can) => {
