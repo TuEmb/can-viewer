@@ -1,4 +1,5 @@
 use std::io;
+use std::process::exit;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -25,6 +26,7 @@ slint::include_modules!();
 #[tokio::main]
 async fn main() -> io::Result<()> {
     let ui = AppWindow::new().unwrap();
+
     let (tx, rx) = mpsc::channel::<DBC>();
     // Wrap `rx` in an Arc<Mutex<>> so it can be shared safely across threads
     let rx = Arc::new(Mutex::new(rx));
@@ -136,13 +138,20 @@ async fn main() -> io::Result<()> {
                     });
                 }
             }
+            let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                if !ui.window().is_visible() {
+                    exit(1);
+                }
+            });
             tokio::time::sleep(Duration::from_micros(50)).await;
         }
     });
 
+    let (start_tx, start_rx) = mpsc::channel();
     // Handle start event
     let ui_handle = ui.as_weak();
     ui.on_start(move |_name, _index| {
+        // start_tx.send((_name, _index));
         #[cfg(target_os = "linux")]
         {
             let ui = ui_handle.unwrap();
@@ -150,19 +159,7 @@ async fn main() -> io::Result<()> {
                 ui.set_init_string(SharedString::from("No device found!!!"));
             } else {
                 ui.set_is_init(true);
-                let ui_handle = ui.as_weak();
-                let rx = Arc::clone(&rx);
-                tokio::spawn(async move {
-                    let mut can_handler = CanHandler {
-                        #[cfg(target_os = "linux")]
-                        iface: &_name,
-                        ui_handle: &ui_handle,
-                        mspc_rx: &rx,
-                    };
-                    loop {
-                        can_handler.process_can_messages();
-                    }
-                });
+                let _ = start_tx.send(_name);
             }
         }
         #[cfg(target_os = "windows")]
@@ -180,26 +177,27 @@ async fn main() -> io::Result<()> {
             match UsbCanSocket::open(usb_can, Baudrate::Baud250K) {
                 Ok(socket) => {
                     ui_handle.unwrap().set_is_init(true);
-                    let rx = Arc::clone(&rx);
-                    tokio::spawn(async move {
-                        let mut can_handler = CanHandler {
-                            #[cfg(target_os = "linux")]
-                            iface: &socket_if[selection],
-                            #[cfg(target_os = "windows")]
-                            iface: socket,
-                            ui_handle: &ui_handle,
-                            mspc_rx: &rx,
-                        };
-                        loop {
-                            can_handler.process_can_messages();
-                        }
-                    });
+                    let _ = start_tx.send(socket);
                 }
                 Err(e) => {
                     ui_handle
                         .unwrap()
                         .set_init_string(SharedString::from(format!("Failed to start: {:?}", e)));
                 }
+            }
+        }
+    });
+
+    let ui_handle = ui.as_weak();
+    tokio::spawn(async move {
+        if let Ok(can_if) = start_rx.recv() {
+            let mut can_handler = CanHandler {
+                iface: can_if,
+                ui_handle: &ui_handle,
+                mspc_rx: &rx,
+            };
+            loop {
+                can_handler.process_can_messages();
             }
         }
     });
@@ -225,7 +223,6 @@ async fn main() -> io::Result<()> {
         };
         packet_filter.process_filter();
     });
-
     ui.run().unwrap();
     Ok(())
 }

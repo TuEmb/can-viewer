@@ -149,6 +149,8 @@ impl<'a> CanHandler<'a> {
                         });
                     }
                 }
+            } else {
+                sleep(Duration::from_millis(50));
             }
         }
     }
