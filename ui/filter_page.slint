@@ -60,6 +60,7 @@ export component filterPage inherits Rectangle {
     in-out property <bool> is_visible: false;
     callback filter_id(CanData, bool);
     
+    visible: is_visible;
     opacity: is_visible?1:0;
     ListView{
         enabled: is_visible?true:false;

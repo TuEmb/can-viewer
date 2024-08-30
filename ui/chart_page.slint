@@ -1,0 +1,62 @@
+import {HorizontalBox, VerticalBox, Button } from "std-widgets.slint";
+
+export struct MouseData {
+    move_x: int,
+    move_y: int,
+    position_x: int,
+    position_y: int,
+    zoom: int,
+    is_release: bool,
+    is_clean: bool,
+    is_new_stock: bool,
+    width: int,
+    height: int
+}
+
+export component CanChart inherits Image {
+    in-out property <MouseData> mouse: {
+        is_release: true,
+    };
+    pure callback render_plot(MouseData) -> image;
+    image-fit: fill;
+    source: root.render_plot(mouse);
+    touch := TouchArea {
+        property <float> pressed-pitch;
+        property <float> pressed-yaw;
+
+        pointer-event(event) => {
+            mouse.height = touch.height / 1px;
+            mouse.width = touch.width / 1px;
+            mouse.position-x = touch.mouse-x / 1px;
+            mouse.position-y = touch.mouse-y / 1px;
+
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.up) {
+                mouse.is-release = true;
+            }
+            else if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down){
+                mouse.is-release = false;
+            }
+        }
+        moved => {
+            if (self.enabled && self.pressed ) {
+                mouse.move-y = (touch.mouse-y - touch.pressed-y)/1px;
+                mouse.move-x = (touch.mouse-x - touch.pressed-x)/1px;
+            }
+        }
+        scroll-event(e) => {
+            mouse.move-y = 0;
+            mouse.move-x = 0;
+            
+            if e.delta-y > 0 {
+                mouse.zoom = -5;
+                return accept;
+            } else if e.delta-y < 0 {
+                mouse.zoom = 5;
+                return accept;
+            } else {
+                reject
+            }
+        }
+        mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
+    }
+}

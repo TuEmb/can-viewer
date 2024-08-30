@@ -4,7 +4,9 @@ use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+mod can_chart;
 mod event_handler;
+use can_chart::Chart;
 use can_dbc::DBC;
 use event_handler::{CanHandler, DBCFile, PacketFilter};
 #[cfg(target_os = "windows")]
@@ -241,6 +243,10 @@ async fn main() -> io::Result<()> {
         };
         packet_filter.process_filter();
     });
+
+    let mut chart = Chart::new(String::from("vehicle_state"));
+    ui.on_render_plot(move |mouse| chart.render_plot(mouse.clone()));
+
     ui.run().unwrap();
     Ok(())
 }
