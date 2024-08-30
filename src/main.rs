@@ -104,6 +104,11 @@ async fn main() -> io::Result<()> {
                 Ok(channels) => {
                     if channels.is_empty() {
                         let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                            let socket_info = socket_info {
+                                index: ModelRc::new(VecModel::from(Vec::default())),
+                                name: ModelRc::new(VecModel::from(Vec::default())),
+                            };
+                            ui.set_can_sockets(socket_info);
                             ui.set_init_string(SharedString::from("No CAN device found !"));
                         });
                     } else {
@@ -136,6 +141,11 @@ async fn main() -> io::Result<()> {
                 }
                 Err(e) => {
                     let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                        let socket_info = socket_info {
+                            index: ModelRc::new(VecModel::from(Vec::default())),
+                            name: ModelRc::new(VecModel::from(Vec::default())),
+                        };
+                        ui.set_can_sockets(socket_info);
                         ui.set_init_string(SharedString::from(format!(
                             "Can't get device list: {:?}",
                             e
