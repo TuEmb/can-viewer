@@ -12,7 +12,7 @@ export component initPage inherits Rectangle {
     background: #1a1f2b;
     in property <socket_info> can_sockets;
     in property <string> out: "Please select CAN device to start";
-    callback start(int);
+    callback start(string, int);
     VerticalLayout {
         Rectangle {}
         Text {
@@ -34,7 +34,7 @@ export component initPage inherits Rectangle {
             Button {
                 text: "start";
                 clicked => {
-                    start(socket_can_box.current-index);
+                    start(socket_can_box.current-value, socket_can_box.current-index);
                 }
             }
             Rectangle {}

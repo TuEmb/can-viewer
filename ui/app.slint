@@ -22,8 +22,8 @@ export component AppWindow inherits Window {
 
     callback open_dbc_file();
     callback filter_id(CanData, bool);
-    callback start(int);
-    title: @tr("CAN VIEWER (version 0.1.0)");
+    callback start(string, int);
+    title: @tr("CAN VIEWER (version 0.2.0)");
     icon: @image-url("images/can_viewer_128px.png");
     background: #1a1f2b;
     default-font-family: "Noto Sans";
@@ -35,8 +35,8 @@ export component AppWindow inherits Window {
     initPage {
         out: init_string;
         can_sockets: can_sockets;
-        start(index) => {
-            start(index)
+        start(name, index) => {
+            start(name, index)
         }
     }
 

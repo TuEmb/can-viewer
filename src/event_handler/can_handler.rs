@@ -1,4 +1,5 @@
 use can_dbc::DBC;
+#[cfg(target_os = "windows")]
 use pcan_basic::socket::usb::UsbCanSocket;
 use slint::{Model, VecModel, Weak};
 use slint::{ModelRc, SharedString};
