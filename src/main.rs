@@ -32,6 +32,7 @@ fn main() -> io::Result<()> {
     }
 
     // Find available socket CAN
+    #[cfg(target_os = "linux")]
     let ui_handle = ui.as_weak();
     #[cfg(target_os = "linux")]
     std::thread::spawn(move || loop {
