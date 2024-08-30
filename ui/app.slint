@@ -6,11 +6,15 @@ import { CanData, CanMessage, CanSignal } from "messages.slint";
 import { viewPage } from "view_page.slint";
 import { filterPage } from "filter_page.slint";
 import { selectPage } from "page_selection.slint";
+import { initPage, socket_info } from "init_page.slint";
 
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
     in property <bool> is_new_dbc: false;
     in property <bool> is_first_open: true;
+    in property <bool> is_init: false;
+    in property <string> init_string: "Please select CAN device to start";
+    in property <socket_info> can_sockets;
     in property <[CanData]> messages;
     in property <[CanData]> filter_messages;
 
@@ -18,6 +22,7 @@ export component AppWindow inherits Window {
 
     callback open_dbc_file();
     callback filter_id(CanData, bool);
+    callback start(int);
     title: @tr("CAN VIEWER (version 0.1.0)");
     icon: @image-url("images/can_viewer_128px.png");
     background: #1a1f2b;
@@ -26,6 +31,16 @@ export component AppWindow inherits Window {
     preferred-height: 600px;
     preferred-width: 800px;
 
+    if !is_init:
+    initPage {
+        out: init_string;
+        can_sockets: can_sockets;
+        start(index) => {
+            start(index)
+        }
+    }
+
+    if is_init:
     VerticalLayout {
         HorizontalLayout {
             view_selection := selectPage {

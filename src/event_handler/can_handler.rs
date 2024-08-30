@@ -1,4 +1,5 @@
 use can_dbc::DBC;
+use pcan_basic::socket::usb::UsbCanSocket;
 use slint::{Model, VecModel, Weak};
 use slint::{ModelRc, SharedString};
 #[cfg(target_os = "linux")]
@@ -7,6 +8,7 @@ use std::collections::HashMap;
 use std::fmt::Write;
 use std::rc::Rc;
 use std::sync::mpsc::Receiver;
+use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -17,35 +19,17 @@ pub struct CanHandler<'a> {
     #[cfg(target_os = "linux")]
     pub iface: &'a str,
     #[cfg(target_os = "windows")]
-    pub iface: PcanDriver<Interface>,
+    pub iface: UsbCanSocket,
     pub ui_handle: &'a Weak<AppWindow>,
-    pub mspc_rx: &'a Receiver<DBC>,
+    pub mspc_rx: &'a Arc<Mutex<Receiver<DBC>>>,
 }
 
 static mut NEW_DBC_CHECK: bool = false;
-
-#[cfg(target_os = "windows")]
-use embedded_can::Frame;
-#[cfg(target_os = "windows")]
-use pcan_basic::{self, Interface};
-
 use super::{EVEN_COLOR, ODD_COLOR};
-#[cfg(target_os = "windows")]
-pub struct PcanDriver<Can>(pub Can);
-#[cfg(target_os = "windows")]
-impl<Can> PcanDriver<Can>
-where
-    Can: embedded_can::blocking::Can,
-    Can::Error: core::fmt::Debug,
-{
-    pub fn read_frame(&mut self) -> Result<Can::Frame, Can::Error> {
-        self.0.try_read()
-    }
-}
 
 impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
-        if let Ok(dbc) = self.mspc_rx.try_recv() {
+        if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
             #[cfg(target_os = "linux")]
             {
                 let can_socket = self.open_can_socket();
@@ -123,6 +107,8 @@ impl<'a> CanHandler<'a> {
     }
     #[cfg(target_os = "windows")]
     fn process_ui_events(&mut self, dbc: DBC) {
+        use pcan_basic::socket::RecvCan;
+
         loop {
             let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
                 if ui.get_is_new_dbc() {
@@ -140,11 +126,8 @@ impl<'a> CanHandler<'a> {
                     break;
                 }
             }
-            if let Ok(frame) = self.iface.read_frame() {
-                let id = match frame.id() {
-                    pcan_basic::Id::Standard(std_id) => std_id.as_raw() as u32,
-                    pcan_basic::Id::Extended(ext_id) => ext_id.as_raw(),
-                };
+            if let Ok(frame) = self.iface.recv_frame() {
+                let id = frame.can_id();
                 let frame_id = id & !0x80000000;
                 for message in dbc.messages() {
                     if frame_id == (message.message_id().raw() & !0x80000000) {
