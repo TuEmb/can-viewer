@@ -32,7 +32,6 @@ fn main() -> io::Result<()> {
     }
 
     // Find available socket CAN
-    #[cfg(target_os = "linux")]
     let ui_handle = ui.as_weak();
     #[cfg(target_os = "linux")]
     std::thread::spawn(move || loop {
@@ -83,19 +82,18 @@ fn main() -> io::Result<()> {
     });
 
     #[cfg(target_os = "windows")]
-    {
+    std::thread::spawn(move || loop {
         // get channel_handle
-        let mut can_socket_names = Vec::default();
-        let mut can_socket_index = Vec::default();
         match attached_channels() {
             Ok(channels) => {
                 if channels.is_empty() {
-                    ui.set_init_string(SharedString::from("No CAN device found !"));
+                    let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                        ui.set_init_string(SharedString::from("No CAN device found !"));
+                    });
                 } else {
-                    ui.set_init_string(SharedString::from(format!(
-                        "Found {} CAN devices\n Please select your device ",
-                        channels.len()
-                    )));
+                    let mut can_socket_names = Vec::default();
+                    let mut can_socket_index = Vec::default();
+                    let mut count = 0;
                     for channel in channels {
                         let socket_name = SharedString::from(format!(
                             "{}(0x{:02X})",
@@ -104,22 +102,31 @@ fn main() -> io::Result<()> {
                         ));
                         can_socket_names.push(socket_name);
                         can_socket_index.push(channel.channel_information.channel_handle as i32);
+                        count += 1;
                     }
-                    let socket_info = socket_info {
-                        index: ModelRc::new(VecModel::from(can_socket_index)),
-                        name: ModelRc::new(VecModel::from(can_socket_names)),
-                    };
-                    ui.set_can_sockets(socket_info);
+                    let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                        ui.set_init_string(SharedString::from(format!(
+                            "Found {} CAN devices\n Please select your device ",
+                            count
+                        )));
+                        let socket_info = socket_info {
+                            index: ModelRc::new(VecModel::from(can_socket_index)),
+                            name: ModelRc::new(VecModel::from(can_socket_names)),
+                        };
+                        ui.set_can_sockets(socket_info);
+                    });
                 }
             }
             Err(e) => {
-                ui.set_init_string(SharedString::from(format!(
-                    "Can't get device list: {:?}",
-                    e
-                )));
+                let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                    ui.set_init_string(SharedString::from(format!(
+                        "Can't get device list: {:?}",
+                        e
+                    )));
+                });
             }
         }
-    }
+    });
 
     // Handle start event
     let ui_handle = ui.as_weak();

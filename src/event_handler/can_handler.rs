@@ -101,8 +101,6 @@ impl<'a> CanHandler<'a> {
                         });
                     }
                 }
-            } else {
-                sleep(Duration::from_millis(10));
             }
         }
     }
@@ -151,8 +149,6 @@ impl<'a> CanHandler<'a> {
                         });
                     }
                 }
-            } else {
-                sleep(Duration::from_millis(10));
             }
         }
     }
