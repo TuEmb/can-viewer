@@ -8,6 +8,7 @@ description = "view real-time CAN packages"
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
 rfd = "0.14.1"
 slint = { version = "1.7.1", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
+tokio = { version = "1.39.3", features = ["full"] }
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3.9", features = ["winuser"] }
