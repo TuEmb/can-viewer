@@ -1,0 +1,65 @@
+import { ComboBox, Button } from "std-widgets.slint";
+
+export struct socket_info {
+    name: [string],
+    index: [int]
+}
+export component initPage inherits Rectangle {
+    min-height: 400px;
+    min-width: 600px;
+    preferred-height: 600px;
+    preferred-width: 800px;
+    background: #1a1f2b;
+    in property <socket_info> can_sockets;
+    in property <string> out: "Please select CAN device to start";
+    callback start(string, int);
+    VerticalLayout {
+        Rectangle {}
+        Text {
+            text: "Welcome to CAN-VIEWER";
+            font-size: 20px;
+            vertical-alignment: center;
+            horizontal-alignment: center;
+            color: white;
+        }
+        Rectangle {}
+        HorizontalLayout {
+            Rectangle {}
+            VerticalLayout {
+                socket_can_box := ComboBox {
+                    model: can_sockets.name;
+                    current-value: can_sockets.name[0];
+                }
+            }
+            Button {
+                text: "start";
+                clicked => {
+                    start(socket_can_box.current-value, socket_can_box.current-index);
+                }
+            }
+            Rectangle {}
+        }
+        Rectangle {}
+        HorizontalLayout {
+            Rectangle {
+                width: 10px;
+            }
+            Rectangle {
+                min-height: 150px;
+                border-color: white;
+                border-width: 2px;
+                border-radius: 5px;
+                Text {
+                    text: out;
+                    color: white;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                }
+            }
+            Rectangle {
+                width: 10px;
+            }
+        }
+        Rectangle {}
+    }
+}
