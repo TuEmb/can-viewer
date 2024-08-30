@@ -87,6 +87,11 @@ async fn main() -> io::Result<()> {
                     });
                 }
             };
+            let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                if !ui.window().is_visible() {
+                    exit(1);
+                }
+            });
             tokio::time::sleep(Duration::from_micros(50)).await;
         }
     });
@@ -192,7 +197,10 @@ async fn main() -> io::Result<()> {
     tokio::spawn(async move {
         if let Ok(can_if) = start_rx.recv() {
             let mut can_handler = CanHandler {
+                #[cfg(target_os = "windows")]
                 iface: can_if,
+                #[cfg(target_os = "linux")]
+                iface: &can_if,
                 ui_handle: &ui_handle,
                 mspc_rx: &rx,
             };
