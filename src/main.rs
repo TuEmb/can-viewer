@@ -52,29 +52,27 @@ async fn main() -> io::Result<()> {
                             ui.set_can_sockets(socket_info);
                             ui.set_init_string(SharedString::from("No CAN device found !"));
                         });
-                    } else {
-                        if previous_interfaces != interface {
-                            let interface_clone = interface.clone();
-                            previous_interfaces = interface.clone();
-                            let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                                ui.set_init_string(SharedString::from(format!(
-                                    "Found {} CAN devices\n Please select your device ",
-                                    interface.len()
-                                )));
-                            });
+                    } else if previous_interfaces != interface {
+                        let interface_clone = interface.clone();
+                        previous_interfaces = interface.clone();
+                        let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                            ui.set_init_string(SharedString::from(format!(
+                                "Found {} CAN devices\n Please select your device ",
+                                interface.len()
+                            )));
+                        });
 
-                            let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                                let convert_shared_string: Vec<SharedString> = interface_clone
-                                    .into_iter()
-                                    .map(SharedString::from)
-                                    .collect();
-                                let socket_info = socket_info {
-                                    index: ModelRc::new(VecModel::from(Vec::default())),
-                                    name: ModelRc::new(VecModel::from(convert_shared_string)),
-                                };
-                                ui.set_can_sockets(socket_info);
-                            });
-                        }
+                        let _ = ui_handle.upgrade_in_event_loop(move |ui| {
+                            let convert_shared_string: Vec<SharedString> = interface_clone
+                                .into_iter()
+                                .map(SharedString::from)
+                                .collect();
+                            let socket_info = socket_info {
+                                index: ModelRc::new(VecModel::from(Vec::default())),
+                                name: ModelRc::new(VecModel::from(convert_shared_string)),
+                            };
+                            ui.set_can_sockets(socket_info);
+                        });
                     }
                 }
                 Err(e) => {
