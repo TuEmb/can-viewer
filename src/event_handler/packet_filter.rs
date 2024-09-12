@@ -29,6 +29,8 @@ impl<'a> PacketFilter<'a> {
                 packet_name: self.filter.packet_name,
                 raw_can: self.filter.raw_can,
                 signal_value: self.filter.signal_value,
+                circle_time: "0.0".into(),
+                time_stamp: "0".into(),
             });
         } else {
             // Remove filter ID

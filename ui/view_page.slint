@@ -7,6 +7,9 @@ export component viewPage inherits Rectangle {
     in-out property <[CanData]> messages;
     in-out property <[CanData]> filter_messages;
     in-out property <int> page-num;
+    in-out property <string> state;
+    in-out property <int> bus_load: 0;
+    in-out property <int> bitrate: 0;
     callback open_dbc_file();
     VerticalLayout {
         HorizontalLayout {
@@ -18,6 +21,29 @@ export component viewPage inherits Rectangle {
                 }
             }
             Rectangle {}
+            Rectangle {
+                Text {
+                    text: "State: " + state;
+                    color: white;
+                }
+            }
+            Rectangle {}
+            Rectangle {
+                Text {
+                    text: "Bitrate: " + bitrate;
+                    color: white;
+                }
+            }
+            Rectangle {}
+            Rectangle {
+                Text {
+                    text: "Bus Load: " + bus_load + "%";
+                    color: white;
+                }
+            }
+            Rectangle {
+                width: 50px;
+            }
         }
         Rectangle {
             height: 1px;
@@ -27,6 +53,7 @@ export component viewPage inherits Rectangle {
         ListView {
             for message in messages: CanMessage {
                 message_id: message.can-id;
+                circle_time: message.circle-time;
                 message_name: message.packet-name;
                 counter: message.counter;
                 signals: message.signal-value;
@@ -38,6 +65,7 @@ export component viewPage inherits Rectangle {
         ListView {
             for message in filter_messages: CanMessage {
                 message_id: message.can-id;
+                circle_time: message.circle-time;
                 message_name: message.packet-name;
                 counter: message.counter;
                 signals: message.signal-value;

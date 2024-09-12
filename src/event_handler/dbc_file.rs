@@ -39,6 +39,8 @@ impl<'a> DBCFile<'a> {
                         counter: 0,
                         raw_can: SharedString::from("default"),
                         color: ODD_COLOR,
+                        circle_time: "0.0".into(),
+                        time_stamp: "0".into(),
                     }]
                     .to_vec(),
                 ));
@@ -83,6 +85,8 @@ impl<'a> DBCFile<'a> {
                         } else {
                             ODD_COLOR
                         },
+                        circle_time: "0.0".into(),
+                        time_stamp: "0".into(),
                     };
 
                     if message_count == 0 {

@@ -1,8 +1,10 @@
 use can_dbc::DBC;
+use chrono::Utc;
 #[cfg(target_os = "windows")]
 use pcan_basic::socket::usb::UsbCanSocket;
 use slint::{Model, VecModel, Weak};
 use slint::{ModelRc, SharedString};
+use socketcan::CanInterface;
 #[cfg(target_os = "linux")]
 use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
 use std::collections::HashMap;
@@ -12,6 +14,7 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
+use std::time::Instant;
 
 use crate::slint_generatedAppWindow::AppWindow;
 use crate::slint_generatedAppWindow::CanData;
@@ -23,6 +26,7 @@ pub struct CanHandler<'a> {
     pub iface: UsbCanSocket,
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_rx: &'a Arc<Mutex<Receiver<DBC>>>,
+    pub bitrate: u32,
 }
 
 static mut NEW_DBC_CHECK: bool = false;
@@ -34,7 +38,9 @@ impl<'a> CanHandler<'a> {
             #[cfg(target_os = "linux")]
             {
                 let can_socket = self.open_can_socket();
-                self.process_ui_events(dbc, can_socket);
+                let can_if = CanInterface::open(self.iface).unwrap();
+                let _ = can_if.set_bitrate(self.bitrate, 700);
+                self.process_ui_events(dbc, can_socket, can_if);
             }
             #[cfg(target_os = "windows")]
             self.process_ui_events(dbc);
@@ -60,8 +66,27 @@ impl<'a> CanHandler<'a> {
         }
     }
     #[cfg(target_os = "linux")]
-    fn process_ui_events(&self, dbc: DBC, can_socket: CanSocket) {
+    fn process_ui_events(&self, dbc: DBC, can_socket: CanSocket, can_if: CanInterface) {
+        let mut start_bus_load = Instant::now();
+        let mut total_bits = 0;
         loop {
+            let bus_state = match can_if.state().unwrap().unwrap() {
+                socketcan::nl::CanState::ErrorActive => "ERR_ACTIVE",
+                socketcan::nl::CanState::ErrorWarning => "ERR_WARNING",
+                socketcan::nl::CanState::ErrorPassive => "ERR_PASSIVE",
+                socketcan::nl::CanState::BusOff => "BUSOFF",
+                socketcan::nl::CanState::Stopped => "STOPPED",
+                socketcan::nl::CanState::Sleeping => "SLEEPING",
+            };
+            let bitrate = can_if.bit_rate().unwrap().unwrap();
+            let busload = if start_bus_load.elapsed() >= Duration::from_millis(1000) {
+                start_bus_load = Instant::now();
+                let bus_load = (total_bits as f64 / bitrate as f64) * 100.0;
+                total_bits = 0;
+                bus_load
+            } else {
+                0.0
+            };
             let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
                 if ui.get_is_new_dbc() {
                     if ui.get_is_first_open() {
@@ -71,6 +96,11 @@ impl<'a> CanHandler<'a> {
                     }
                     ui.set_is_new_dbc(false);
                 }
+                ui.set_state(bus_state.into());
+                ui.set_bitrate(bitrate as i32);
+                if busload > 0.0 {
+                    ui.set_bus_load(busload as i32);
+                }
             });
             unsafe {
                 if NEW_DBC_CHECK {
@@ -79,6 +109,7 @@ impl<'a> CanHandler<'a> {
                 }
             }
             if let Ok(frame) = can_socket.read_frame() {
+                total_bits += (frame.len() + 6) * 8; // Data length + overhead (approximation)
                 let frame_id = frame.raw_id() & !0x80000000;
                 for message in dbc.messages() {
                     if frame_id == (message.message_id().raw() & !0x80000000) {
@@ -163,7 +194,11 @@ impl<'a> CanHandler<'a> {
     ) {
         for (message_count, message) in messages.iter().enumerate() {
             if message.can_id == format!("{:08X}", frame_id) {
+                let now = Utc::now().timestamp_micros();
+                let can_data = messages.row_data(message_count).unwrap();
                 let can_signals = Self::create_can_signals(&message, &signal_data);
+                let circle_time =
+                    (now - (can_data.time_stamp).parse::<i64>().unwrap()) as f32 / 1000.0;
                 messages.set_row_data(
                     message_count,
                     CanData {
@@ -177,6 +212,8 @@ impl<'a> CanHandler<'a> {
                         } else {
                             ODD_COLOR
                         },
+                        circle_time: format!("{:.02} ms", circle_time).into(),
+                        time_stamp: now.to_string().into(),
                     },
                 );
                 break;
