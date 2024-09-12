@@ -209,7 +209,6 @@ async fn main() -> io::Result<()> {
                 iface: &can_if,
                 ui_handle: &ui_handle,
                 mspc_rx: &rx,
-                bitrate: 250000,
             };
             loop {
                 can_handler.process_can_messages();

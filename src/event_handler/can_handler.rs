@@ -26,7 +26,6 @@ pub struct CanHandler<'a> {
     pub iface: UsbCanSocket,
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_rx: &'a Arc<Mutex<Receiver<DBC>>>,
-    pub bitrate: u32,
 }
 
 static mut NEW_DBC_CHECK: bool = false;
@@ -39,7 +38,6 @@ impl<'a> CanHandler<'a> {
             {
                 let can_socket = self.open_can_socket();
                 let can_if = CanInterface::open(self.iface).unwrap();
-                let _ = can_if.set_bitrate(self.bitrate, 700);
                 self.process_ui_events(dbc, can_socket, can_if);
             }
             #[cfg(target_os = "windows")]
