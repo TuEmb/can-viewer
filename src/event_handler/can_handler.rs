@@ -4,9 +4,8 @@ use chrono::Utc;
 use pcan_basic::socket::usb::UsbCanSocket;
 use slint::{Model, VecModel, Weak};
 use slint::{ModelRc, SharedString};
-use socketcan::CanInterface;
 #[cfg(target_os = "linux")]
-use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
+use socketcan::{CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
 use std::collections::HashMap;
 use std::fmt::Write;
 use std::rc::Rc;
@@ -136,8 +135,17 @@ impl<'a> CanHandler<'a> {
     #[cfg(target_os = "windows")]
     fn process_ui_events(&mut self, dbc: DBC) {
         use pcan_basic::socket::RecvCan;
-
+        let mut start_bus_load = Instant::now();
+        let mut total_bits = 0;
         loop {
+            let busload = if start_bus_load.elapsed() >= Duration::from_millis(1000) {
+                start_bus_load = Instant::now();
+                let bus_load = (total_bits as f64 / 250000_f64) * 100.0;
+                total_bits = 0;
+                bus_load
+            } else {
+                0.0
+            };
             let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
                 if ui.get_is_new_dbc() {
                     if ui.get_is_first_open() {
@@ -147,6 +155,9 @@ impl<'a> CanHandler<'a> {
                     }
                     ui.set_is_new_dbc(false);
                 }
+                if busload > 0.0 {
+                    ui.set_bus_load(busload as i32);
+                }
             });
             unsafe {
                 if NEW_DBC_CHECK {
@@ -155,6 +166,7 @@ impl<'a> CanHandler<'a> {
                 }
             }
             if let Ok(frame) = self.iface.recv_frame() {
+                total_bits += (frame.dlc() as u32 + 6) * 8; // Data length + overhead (approximation)
                 let id = frame.can_id();
                 let frame_id = id & !0x80000000;
                 for message in dbc.messages() {
@@ -178,8 +190,6 @@ impl<'a> CanHandler<'a> {
                         });
                     }
                 }
-            } else {
-                sleep(Duration::from_millis(50));
             }
         }
     }
@@ -193,10 +203,9 @@ impl<'a> CanHandler<'a> {
         for (message_count, message) in messages.iter().enumerate() {
             if message.can_id == format!("{:08X}", frame_id) {
                 let now = Utc::now().timestamp_micros();
-                let can_data = messages.row_data(message_count).unwrap();
                 let can_signals = Self::create_can_signals(&message, &signal_data);
                 let circle_time =
-                    (now - (can_data.time_stamp).parse::<i64>().unwrap()) as f32 / 1000.0;
+                    (now - (message.time_stamp).parse::<i64>().unwrap()) as f32 / 1000.0;
                 messages.set_row_data(
                     message_count,
                     CanData {
