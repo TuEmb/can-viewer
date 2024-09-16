@@ -6,13 +6,11 @@ use std::time::Duration;
 
 mod event_handler;
 use can_dbc::DBC;
+#[cfg(target_os = "windows")]
+use event_handler::p_can_bitrate;
 use event_handler::{CanHandler, DBCFile, PacketFilter};
 #[cfg(target_os = "windows")]
-use pcan_basic::{
-    bus::UsbBus,
-    hw::attached_channels,
-    socket::{usb::UsbCanSocket, Baudrate},
-};
+use pcan_basic::{bus::UsbBus, hw::attached_channels, socket::usb::UsbCanSocket};
 #[cfg(target_os = "linux")]
 use privilege_rs::privilege_request;
 #[cfg(target_os = "windows")]
@@ -27,6 +25,7 @@ slint::include_modules!();
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    #[cfg(target_os = "linux")]
     privilege_request();
     let ui = AppWindow::new().unwrap();
 
@@ -188,10 +187,11 @@ async fn main() -> io::Result<()> {
             };
             let usb_can = UsbBus::try_from(get_device_handle as u16).unwrap();
             let ui_handle = ui.as_weak();
-            match UsbCanSocket::open(usb_can, Baudrate::Baud250K) {
+            let baudrate = p_can_bitrate(&bitrate).unwrap();
+            match UsbCanSocket::open(usb_can, baudrate) {
                 Ok(socket) => {
                     ui_handle.unwrap().set_is_init(true);
-                    let _ = start_tx.send(socket);
+                    let _ = start_tx.send((socket, bitrate));
                 }
                 Err(e) => {
                     ui_handle

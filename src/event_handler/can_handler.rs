@@ -138,13 +138,14 @@ impl<'a> CanHandler<'a> {
     }
     #[cfg(target_os = "windows")]
     fn process_ui_events(&mut self, dbc: DBC) {
-        use pcan_basic::socket::RecvCan;
+        use pcan_basic::{error::PcanError, socket::RecvCan};
         let mut start_bus_load = Instant::now();
         let mut total_bits = 0;
         loop {
+            let bitrate = self.bitrate().unwrap();
             let busload = if start_bus_load.elapsed() >= Duration::from_millis(1000) {
                 start_bus_load = Instant::now();
-                let bus_load = (total_bits as f64 / 250000_f64) * 100.0;
+                let bus_load = (total_bits as f64 / bitrate as f64) * 100.0;
                 total_bits = 0;
                 bus_load
             } else {
@@ -159,6 +160,7 @@ impl<'a> CanHandler<'a> {
                     }
                     ui.set_is_new_dbc(false);
                 }
+                ui.set_bitrate(bitrate as i32);
                 if busload > 0.0 {
                     ui.set_bus_load(busload as i32);
                 }
@@ -169,30 +171,42 @@ impl<'a> CanHandler<'a> {
                     break;
                 }
             }
-            if let Ok(frame) = self.iface.recv_frame() {
-                total_bits += (frame.dlc() as u32 + 6) * 8; // Data length + overhead (approximation)
-                let id = frame.can_id();
-                let frame_id = id & !0x80000000;
-                for message in dbc.messages() {
-                    if frame_id == (message.message_id().raw() & !0x80000000) {
-                        let padding_data = Self::pad_to_8_bytes(frame.data());
-                        let hex_string = Self::array_to_hex_string(frame.data());
-                        let signal_data = message.parse_from_can(&padding_data);
-                        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-                            let is_filter = ui.get_is_filter();
-                            let messages: ModelRc<CanData> = if !is_filter {
-                                ui.get_messages()
-                            } else {
-                                ui.get_filter_messages()
-                            };
-                            Self::update_ui_with_signals(
-                                &messages,
-                                frame_id,
-                                signal_data,
-                                hex_string,
-                            );
-                        });
+            match self.iface.recv_frame() {
+                Ok(frame) => {
+                    let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                        ui.set_state("OK".into());
+                    });
+                    total_bits += (frame.dlc() as u32 + 6) * 8; // Data length + overhead (approximation)
+                    let id = frame.can_id();
+                    let frame_id = id & !0x80000000;
+                    for message in dbc.messages() {
+                        if frame_id == (message.message_id().raw() & !0x80000000) {
+                            let padding_data = Self::pad_to_8_bytes(frame.data());
+                            let hex_string = Self::array_to_hex_string(frame.data());
+                            let signal_data = message.parse_from_can(&padding_data);
+                            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                                let is_filter = ui.get_is_filter();
+                                let messages: ModelRc<CanData> = if !is_filter {
+                                    ui.get_messages()
+                                } else {
+                                    ui.get_filter_messages()
+                                };
+                                Self::update_ui_with_signals(
+                                    &messages,
+                                    frame_id,
+                                    signal_data,
+                                    hex_string,
+                                );
+                            });
+                        }
                     }
+                }
+                Err(e) => {
+                    let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                        if e != PcanError::QrcvEmpty {
+                            ui.set_state(format!("{:?}", e).into());
+                        }
+                    });
                 }
             }
         }
@@ -295,14 +309,12 @@ impl<'a> CanHandler<'a> {
             ("800 kbit/s", 800_000),
             ("500 kbit/s", 500_000),
             ("250 kbit/s", 250_000),
-            ("200 kbit/s", 200_000),
             ("125 kbit/s", 125_000),
             ("100 kbit/s", 100_000),
             ("95.238 kbit/s", 95_238),
             ("83.333 kbit/s", 83_333),
             ("50 kbit/s", 50_000),
             ("47.619 kbit/s", 47_619),
-            ("40 kbit/s", 40_000),
             ("33.333 kbit/s", 33_333),
             ("20 kbit/s", 20_000),
             ("10 kbit/s", 10_000),

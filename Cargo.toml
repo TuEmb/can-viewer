@@ -1,6 +1,6 @@
 [package]
 name = "can-viewer"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "view real-time CAN packages"
 
@@ -27,7 +27,7 @@ winresource = "0.1.17"
 [package.metadata.bundle]
 name = "can-viewer"
 icon = ["ui/images/can_viewer_32px.png", "ui/images/can_viewer_128px.png", "ui/images/can_viewer_256px.png"]
-version = "1.0.0"
+version = "0.2.1"
 copyright = "Copyright (c) Tu Nguyen 2024. All rights reserved."
 category = "Developer Tool"
 short_description = "view real-time CAN packages"
@@ -37,5 +37,5 @@ can-view can records real-time can packages and parse data with DBC input.
 """
 
 [package.metadata.winresource]
-OriginalFilename = "can-viewer.exe"
+OriginalFilename = "can-viewer_0.2.1.exe"
 LegalCopyright = "Copyright © 2024"
