@@ -17,7 +17,7 @@ winapi = { version = "0.3.9", features = ["winuser"] }
 pcan-basic = { git = "https://github.com/TuEmb/pcan-basic.git", branch="main"}
 
 [target.'cfg(unix)'.dependencies]
-privilege-rs = "0.1.0"
+privilege-rs = "0.1.2"
 socketcan = { git = "https://github.com/socketcan-rs/socketcan-rs.git", rev="e0d7760eca8085b247f37ea22f0aa41e00fa25fa", features = ["enumerate"] }
 
 [build-dependencies]

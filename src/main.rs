@@ -1,23 +1,17 @@
 use std::io;
-use std::process::exit;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
 
 mod event_handler;
 use can_dbc::DBC;
+use event_handler::{CanHandler, DBCFile, Init, PacketFilter};
 #[cfg(target_os = "windows")]
-use event_handler::p_can_bitrate;
-use event_handler::{CanHandler, DBCFile, PacketFilter};
-#[cfg(target_os = "windows")]
-use pcan_basic::{bus::UsbBus, hw::attached_channels, socket::usb::UsbCanSocket};
+use pcan_basic::{bus::UsbBus, socket::usb::UsbCanSocket};
 #[cfg(target_os = "linux")]
 use privilege_rs::privilege_request;
 #[cfg(target_os = "windows")]
 use slint::Model;
-use slint::{ModelRc, SharedString, VecModel};
-#[cfg(target_os = "linux")]
-use socketcan::available_interfaces;
+use slint::SharedString;
 #[cfg(target_os = "windows")]
 use winapi::um::wincon::FreeConsole;
 
@@ -39,125 +33,11 @@ async fn main() -> io::Result<()> {
 
     // Find available socket CAN
     let ui_handle = ui.as_weak();
-    #[cfg(target_os = "linux")]
     tokio::spawn(async move {
-        let mut previous_interfaces = Vec::default();
-        loop {
-            match available_interfaces() {
-                Ok(interface) => {
-                    if interface.is_empty() {
-                        let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                            let socket_info = socket_info {
-                                index: ModelRc::new(VecModel::from(Vec::default())),
-                                name: ModelRc::new(VecModel::from(Vec::default())),
-                            };
-                            ui.set_can_sockets(socket_info);
-                            ui.set_init_string(SharedString::from("No CAN device found !"));
-                        });
-                    } else if previous_interfaces != interface {
-                        let interface_clone = interface.clone();
-                        previous_interfaces = interface.clone();
-                        let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                            ui.set_init_string(SharedString::from(format!(
-                                "Found {} CAN devices\n Please select your device ",
-                                interface.len()
-                            )));
-                        });
-
-                        let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                            let convert_shared_string: Vec<SharedString> = interface_clone
-                                .into_iter()
-                                .map(SharedString::from)
-                                .collect();
-                            let socket_info = socket_info {
-                                index: ModelRc::new(VecModel::from(Vec::default())),
-                                name: ModelRc::new(VecModel::from(convert_shared_string)),
-                            };
-                            ui.set_can_sockets(socket_info);
-                        });
-                    }
-                }
-                Err(e) => {
-                    let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                        ui.set_init_string(SharedString::from(format!(
-                            "Can't get device list: {}",
-                            e
-                        )));
-                        let socket_info = socket_info {
-                            index: ModelRc::new(VecModel::from(Vec::default())),
-                            name: ModelRc::new(VecModel::from(Vec::default())),
-                        };
-                        ui.set_can_sockets(socket_info);
-                    });
-                }
-            };
-            let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                if !ui.window().is_visible() {
-                    exit(1);
-                }
-            });
-            tokio::time::sleep(Duration::from_micros(50)).await;
-        }
-    });
-
-    #[cfg(target_os = "windows")]
-    tokio::spawn(async move {
-        let mut previous_sockets = Vec::default();
-        loop {
-            // get channel_handle
-            match attached_channels() {
-                Ok(channels) => {
-                    if channels.is_empty() {
-                        let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                            ui.set_init_string(SharedString::from("No CAN device found !"));
-                        });
-                    } else {
-                        let mut can_socket_names = Vec::default();
-                        let mut can_socket_index = Vec::default();
-                        let mut count = 0;
-                        for channel in channels {
-                            let socket_name = SharedString::from(format!(
-                                "{}(0x{:02X})",
-                                channel.device_name(),
-                                channel.channel_information.device_id
-                            ));
-                            can_socket_names.push(socket_name);
-                            can_socket_index
-                                .push(channel.channel_information.channel_handle as i32);
-                            count += 1;
-                        }
-                        if previous_sockets != can_socket_names {
-                            previous_sockets = can_socket_names.clone();
-                            let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                                ui.set_init_string(SharedString::from(format!(
-                                    "Found {} CAN devices\n Please select your device ",
-                                    count
-                                )));
-                                let socket_info = socket_info {
-                                    index: ModelRc::new(VecModel::from(can_socket_index)),
-                                    name: ModelRc::new(VecModel::from(can_socket_names)),
-                                };
-                                ui.set_can_sockets(socket_info);
-                            });
-                        }
-                    }
-                }
-                Err(e) => {
-                    let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                        ui.set_init_string(SharedString::from(format!(
-                            "Can't get device list: {:?}",
-                            e
-                        )));
-                    });
-                }
-            }
-            let _ = ui_handle.upgrade_in_event_loop(move |ui| {
-                if !ui.window().is_visible() {
-                    exit(1);
-                }
-            });
-            tokio::time::sleep(Duration::from_micros(50)).await;
-        }
+        let init_event = Init {
+            ui_handle: &ui_handle,
+        };
+        init_event.run();
     });
 
     let (start_tx, start_rx) = mpsc::channel();
@@ -177,6 +57,7 @@ async fn main() -> io::Result<()> {
         }
         #[cfg(target_os = "windows")]
         {
+            use event_handler::p_can_bitrate;
             let ui = ui_handle.unwrap();
             let get_device_handle = match ui.get_can_sockets().index.row_data(_index as usize) {
                 Some(device) => device,

@@ -1,9 +1,11 @@
 pub(crate) mod can_handler;
 pub(crate) mod dbc_file;
+pub(crate) mod init;
 pub(crate) mod packet_filter;
 
 pub use can_handler::CanHandler;
 pub use dbc_file::DBCFile;
+pub use init::Init;
 pub use packet_filter::PacketFilter;
 #[cfg(target_os = "windows")]
 use pcan_basic::socket::Baudrate;
