@@ -17,12 +17,15 @@ export component AppWindow inherits Window {
     in property <socket_info> can_sockets;
     in property <[CanData]> messages;
     in property <[CanData]> filter_messages;
+    in-out property <string> state;
+    in-out property <int> bus_load;
+    in-out property <int> bitrate;
 
     in-out property <int> active-page: 0;
 
     callback open_dbc_file();
     callback filter_id(CanData, bool);
-    callback start(string, int);
+    callback start(string, int, string);
     title: @tr("CAN VIEWER (version 0.2.0)");
     icon: @image-url("images/can_viewer_128px.png");
     background: #1a1f2b;
@@ -35,8 +38,8 @@ export component AppWindow inherits Window {
     initPage {
         out: init_string;
         can_sockets: can_sockets;
-        start(name, index) => {
-            start(name, index)
+        start(name, index, bitrate) => {
+            start(name, index, bitrate);
         }
     }
 
@@ -96,6 +99,9 @@ export component AppWindow inherits Window {
             }
             if root.active-page == 0:
             viewPage {
+                state: state;
+                bitrate: bitrate;
+                bus_load: bus_load;
                 page-num: 0;
                 is_filter: root.is_filter;
                 messages: root.messages;

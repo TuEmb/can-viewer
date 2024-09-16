@@ -12,6 +12,8 @@ export struct CanData {
     packet_name: string,
     raw_can: string,
     counter: int,
+    time_stamp: string,
+    circle_time: string,
     signal_value: [CanSignal],
     color: color
 }
@@ -21,15 +23,16 @@ export component CanMessage inherits VerticalLayout {
     in property <string> raw_data: "0x01 0x02 0x03 0x04";
     in property <string> message_name: "packet_xxx";
     in property <int> counter: 0;
+    in property <string> circle_time: 0;
     in property <color> back_ground;
     in property <[CanSignal]> signals: [
-        {signal_name: "signal_1", signal_value: "100", unit: "Hz", factor: "1.0"},
-        {signal_name: "signal_2", signal_value: "999", unit: "Km", factor: "1.0"},
-        {signal_name: "signal_3", signal_value: "203", unit: "second", factor: "1.0"},
-        {signal_name: "signal_4", signal_value: "15.6", unit: "mWh", factor: "1.0"},
-        {signal_name: "signal_5", signal_value: "20.9", unit: "A", factor: "1.0"},
-        {signal_name: "signal_6", signal_value: "10", unit: "Volt", factor: "1.0"},
-        {signal_name: "signal_7", signal_value: "1", unit: "mA", factor: "1.0"}];
+        {signal_name: "signal_1", signal_value: "100", unit: "Hz", factor: "1.0", circle_time: "1 ms"},
+        {signal_name: "signal_2", signal_value: "999", unit: "Km", factor: "1.0", circle_time: "1 ms"},
+        {signal_name: "signal_3", signal_value: "203", unit: "second", factor: "1.0", circle_time: "1 ms"},
+        {signal_name: "signal_4", signal_value: "15.6", unit: "mWh", factor: "1.0", circle_time: "1 ms"},
+        {signal_name: "signal_5", signal_value: "20.9", unit: "A", factor: "1.0", circle_time: "1 ms"},
+        {signal_name: "signal_6", signal_value: "10", unit: "Volt", factor: "1.0", circle_time: "1 ms"},
+        {signal_name: "signal_7", signal_value: "1", unit: "mA", factor: "1.0", circle_time: "1 ms"}];
         height: (signals.length < 3)? 75px: signals.length * 25px;
     Rectangle {
         background: back_ground;
@@ -70,11 +73,22 @@ export component CanMessage inherits VerticalLayout {
             }
         
             Rectangle {
-                width: root.width * 40%;
+                width: root.width * 30%;
                 border-color: white;
                 border-width: 0.25px;
                 Text {
                     text: root.raw_data;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    color: white;
+                }   
+            }
+            Rectangle {
+                width: root.width * 10%;
+                border-color: white;
+                border-width: 0.25px;
+                Text {
+                    text: root.circle_time;
                     horizontal-alignment: center;
                     vertical-alignment: center;
                     color: white;

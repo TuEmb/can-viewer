@@ -12,7 +12,7 @@ export component initPage inherits Rectangle {
     background: #1a1f2b;
     in property <socket_info> can_sockets;
     in property <string> out: "Please select CAN device to start";
-    callback start(string, int);
+    callback start(string /* name */, int /* index */, string /* */);
     VerticalLayout {
         Rectangle {}
         Text {
@@ -31,10 +31,16 @@ export component initPage inherits Rectangle {
                     current-value: can_sockets.name[0];
                 }
             }
+            bitrate_box := ComboBox {
+                model: ["1 Mbit/s", "800 kbit/s", "500 kbit/s", "250 kbit/s", "125 kbit/s",
+                        "100 kbit/s", "95.238 kbit/s", "83.333 kbit/s", "50 kbit/s", "47.619 kbit/s",
+                        "33.333 kbit/s", "20 kbit/s", "10 kbit/s", "5 kbit/s"];
+                current-value: "250 kbit/s";
+            }
             Button {
                 text: "start";
                 clicked => {
-                    start(socket_can_box.current-value, socket_can_box.current-index);
+                    start(socket_can_box.current-value, socket_can_box.current-index, bitrate_box.current-value);
                 }
             }
             Rectangle {}

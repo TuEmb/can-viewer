@@ -6,13 +6,13 @@ use std::time::Duration;
 
 mod event_handler;
 use can_dbc::DBC;
+#[cfg(target_os = "windows")]
+use event_handler::p_can_bitrate;
 use event_handler::{CanHandler, DBCFile, PacketFilter};
 #[cfg(target_os = "windows")]
-use pcan_basic::{
-    bus::UsbBus,
-    hw::attached_channels,
-    socket::{usb::UsbCanSocket, Baudrate},
-};
+use pcan_basic::{bus::UsbBus, hw::attached_channels, socket::usb::UsbCanSocket};
+#[cfg(target_os = "linux")]
+use privilege_rs::privilege_request;
 #[cfg(target_os = "windows")]
 use slint::Model;
 use slint::{ModelRc, SharedString, VecModel};
@@ -25,6 +25,8 @@ slint::include_modules!();
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    #[cfg(target_os = "linux")]
+    privilege_request();
     let ui = AppWindow::new().unwrap();
 
     let (tx, rx) = mpsc::channel::<DBC>();
@@ -161,7 +163,7 @@ async fn main() -> io::Result<()> {
     let (start_tx, start_rx) = mpsc::channel();
     // Handle start event
     let ui_handle = ui.as_weak();
-    ui.on_start(move |_name, _index| {
+    ui.on_start(move |_name, _index, bitrate| {
         // start_tx.send((_name, _index));
         #[cfg(target_os = "linux")]
         {
@@ -170,7 +172,7 @@ async fn main() -> io::Result<()> {
                 ui.set_init_string(SharedString::from("No device found!!!"));
             } else {
                 ui.set_is_init(true);
-                let _ = start_tx.send(_name);
+                let _ = start_tx.send((_name, bitrate));
             }
         }
         #[cfg(target_os = "windows")]
@@ -185,10 +187,11 @@ async fn main() -> io::Result<()> {
             };
             let usb_can = UsbBus::try_from(get_device_handle as u16).unwrap();
             let ui_handle = ui.as_weak();
-            match UsbCanSocket::open(usb_can, Baudrate::Baud250K) {
+            let baudrate = p_can_bitrate(&bitrate).unwrap();
+            match UsbCanSocket::open(usb_can, baudrate) {
                 Ok(socket) => {
                     ui_handle.unwrap().set_is_init(true);
-                    let _ = start_tx.send(socket);
+                    let _ = start_tx.send((socket, bitrate));
                 }
                 Err(e) => {
                     ui_handle
@@ -201,7 +204,7 @@ async fn main() -> io::Result<()> {
 
     let ui_handle = ui.as_weak();
     tokio::spawn(async move {
-        if let Ok(can_if) = start_rx.recv() {
+        if let Ok((can_if, bitrate)) = start_rx.recv() {
             let mut can_handler = CanHandler {
                 #[cfg(target_os = "windows")]
                 iface: can_if,
@@ -209,6 +212,7 @@ async fn main() -> io::Result<()> {
                 iface: &can_if,
                 ui_handle: &ui_handle,
                 mspc_rx: &rx,
+                bitrate: bitrate.to_string(),
             };
             loop {
                 can_handler.process_can_messages();
