@@ -53,13 +53,13 @@ impl<'a> Init<'a> {
                             let mut interface_names = Vec::default();
                             let mut interface_index = Vec::default();
                             let mut count = 0;
-                            for channel in channels {
+                            for channel in interface {
                                 let interface_name = SharedString::from(format!(
                                     "{}(0x{:02X})",
                                     channel.device_name(),
                                     channel.channel_information.device_id
                                 ));
-                                interface_names.push(socket_name);
+                                interface_names.push(interface_name);
                                 interface_index
                                     .push(channel.channel_information.channel_handle as i32);
                                 count += 1;
@@ -84,7 +84,7 @@ impl<'a> Init<'a> {
                 Err(e) => {
                     let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
                         ui.set_init_string(SharedString::from(format!(
-                            "Can't get device list: {}",
+                            "Can't get device list: {:?}",
                             e
                         )));
                         let socket_info = socket_info {

@@ -6,9 +6,7 @@ mod event_handler;
 use can_dbc::DBC;
 use event_handler::{CanHandler, DBCFile, Init, PacketFilter};
 #[cfg(target_os = "windows")]
-use pcan_basic::{
-    bus::UsbBus, hw::attached_channels as available_interfaces, socket::usb::UsbCanSocket,
-};
+use pcan_basic::{bus::UsbBus, socket::usb::UsbCanSocket};
 #[cfg(target_os = "linux")]
 use privilege_rs::privilege_request;
 #[cfg(target_os = "windows")]
