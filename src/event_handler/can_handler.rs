@@ -25,6 +25,7 @@ pub struct CanHandler<'a> {
     pub iface: UsbCanSocket,
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_rx: &'a Arc<Mutex<Receiver<DBC>>>,
+    pub bitrate: String,
 }
 
 static mut NEW_DBC_CHECK: bool = false;
@@ -35,8 +36,11 @@ impl<'a> CanHandler<'a> {
         if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
             #[cfg(target_os = "linux")]
             {
-                let can_socket = self.open_can_socket();
                 let can_if = CanInterface::open(self.iface).unwrap();
+                let _ = can_if.bring_down();
+                let _ = can_if.set_bitrate(self.bitrate().unwrap(), None);
+                let _ = can_if.bring_up();
+                let can_socket = self.open_can_socket();
                 self.process_ui_events(dbc, can_socket, can_if);
             }
             #[cfg(target_os = "windows")]
@@ -283,5 +287,31 @@ impl<'a> CanHandler<'a> {
         }
         hex_string.pop(); // Remove the trailing space
         hex_string
+    }
+
+    fn bitrate(&self) -> Option<u32> {
+        let bitrate_map: HashMap<&str, u32> = [
+            ("1 Mbit/s", 1_000_000),
+            ("800 kbit/s", 800_000),
+            ("500 kbit/s", 500_000),
+            ("250 kbit/s", 250_000),
+            ("200 kbit/s", 200_000),
+            ("125 kbit/s", 125_000),
+            ("100 kbit/s", 100_000),
+            ("95.238 kbit/s", 95_238),
+            ("83.333 kbit/s", 83_333),
+            ("50 kbit/s", 50_000),
+            ("47.619 kbit/s", 47_619),
+            ("40 kbit/s", 40_000),
+            ("33.333 kbit/s", 33_333),
+            ("20 kbit/s", 20_000),
+            ("10 kbit/s", 10_000),
+            ("5 kbit/s", 5_000),
+        ]
+        .iter()
+        .cloned()
+        .collect();
+
+        bitrate_map.get(self.bitrate.as_str()).copied()
     }
 }

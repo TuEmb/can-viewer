@@ -6,6 +6,7 @@ description = "view real-time CAN packages"
 
 [dependencies]
 chrono = "0.4.38"
+sudo = "0.6"
 can-dbc = { git="https://github.com/TuEmb/can-dbc.git", branch="dev" }
 rfd = "0.14.1"
 slint = { version = "1.7.1", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
@@ -16,6 +17,7 @@ winapi = { version = "0.3.9", features = ["winuser"] }
 pcan-basic = { git = "https://github.com/TuEmb/pcan-basic.git", branch="main"}
 
 [target.'cfg(unix)'.dependencies]
+privilege-rs = "0.1.0"
 socketcan = { git = "https://github.com/socketcan-rs/socketcan-rs.git", rev="e0d7760eca8085b247f37ea22f0aa41e00fa25fa", features = ["enumerate"] }
 
 [build-dependencies]
