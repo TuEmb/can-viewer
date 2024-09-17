@@ -118,6 +118,7 @@ async fn main() -> io::Result<()> {
             };
             loop {
                 can_handler.run();
+                can_handler.check_to_kill_thread();
             }
         }
     });
