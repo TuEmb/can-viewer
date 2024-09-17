@@ -100,7 +100,7 @@ impl<'a> Init<'a> {
                     exit(1);
                 }
             });
-            std::thread::sleep(Duration::from_micros(50));
+            std::thread::sleep(Duration::from_millis(50));
         }
     }
 }

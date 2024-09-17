@@ -45,8 +45,9 @@ impl<'a> DebugHandler<'a> {
                     ui.set_raw_data(message_vec.into());
                 });
             }
+        } else {
+            std::thread::sleep(Duration::from_millis(1));
         }
-        std::thread::sleep(Duration::from_millis(1));
     }
 
     fn bitrate(&self) -> Option<u32> {

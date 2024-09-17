@@ -139,6 +139,8 @@ impl<'a> ViewHandler<'a> {
                         });
                     }
                 }
+            } else {
+                std::thread::sleep(Duration::from_millis(1));
             }
         }
     }
