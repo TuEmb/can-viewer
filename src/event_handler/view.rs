@@ -2,23 +2,20 @@ use can_dbc::DBC;
 use chrono::Utc;
 #[cfg(target_os = "windows")]
 use pcan_basic::socket::usb::UsbCanSocket;
-use slint::{Model, VecModel, Weak};
-use slint::{ModelRc, SharedString};
+use slint::{Model, ModelRc, SharedString, VecModel, Weak};
 #[cfg(target_os = "linux")]
 use socketcan::{CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
-use std::collections::HashMap;
-use std::fmt::Write;
-use std::rc::Rc;
-use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex};
-use std::thread::sleep;
-use std::time::Duration;
-use std::time::Instant;
+use std::{
+    collections::HashMap,
+    fmt::Write,
+    rc::Rc,
+    sync::{mpsc::Receiver, Arc, Mutex},
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
-use crate::slint_generatedAppWindow::AppWindow;
-use crate::slint_generatedAppWindow::CanData;
-use crate::slint_generatedAppWindow::CanSignal;
-pub struct CanHandler<'a> {
+use crate::slint_generatedAppWindow::{AppWindow, CanData, CanSignal};
+pub struct ViewHandler<'a> {
     #[cfg(target_os = "linux")]
     pub iface: &'a str,
     #[cfg(target_os = "windows")]
@@ -31,7 +28,7 @@ pub struct CanHandler<'a> {
 static mut NEW_DBC_CHECK: bool = false;
 use super::{EVEN_COLOR, ODD_COLOR};
 
-impl<'a> CanHandler<'a> {
+impl<'a> ViewHandler<'a> {
     pub fn process_can_messages(&mut self) {
         if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
             #[cfg(target_os = "linux")]

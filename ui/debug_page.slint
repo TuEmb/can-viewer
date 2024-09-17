@@ -1,0 +1,138 @@
+
+import { ListView, Button } from "std-widgets.slint";
+
+export struct raw_can {
+    id: string,
+    len: int,
+    data: string
+}
+export component debugPage inherits Rectangle {
+    in property <string> state;
+    in property <string> bitrate;
+    in property <string> bus_load;
+    in-out property <[raw_can]> raw_data: [
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"}];
+    VerticalLayout {
+        HorizontalLayout {
+            Rectangle {}
+            Rectangle {
+                max-height: 30px;
+                Text {
+                    text: "State: " + state;
+                    color: white;
+                }
+            }
+            Rectangle {}
+            Rectangle {
+                Text {
+                    text: "Bitrate: " + bitrate;
+                    color: white;
+                }
+            }
+            Rectangle {}
+            Rectangle {
+                Text {
+                    text: "Bus Load: " + bus_load + "%";
+                    color: white;
+                }
+            }
+            Rectangle {
+                width: 50px;
+            }
+        }
+        Rectangle {
+            height: 1px;
+            background: white;
+        }
+        HorizontalLayout {
+            Rectangle {
+                width: 30px;
+                Text {
+                    text: "Receive";
+                    color: white;
+                    rotation-angle: 270deg;
+                }
+                border-color: white;
+                border-width: 1px;
+            }
+            VerticalLayout {
+                ListView {
+                    for raw in raw_data: Rectangle {
+                        HorizontalLayout {
+                            Rectangle {
+                                width: parent.width * 30%;
+                                Text {
+                                    text: raw.id;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 20%;
+                                Text {
+                                    text: raw.len;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 50%;
+                                Text {
+                                    text: raw.data;
+                                    color: white;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Rectangle {
+            height: 1px;
+            border-color: white;
+            border-width: 1px;
+        }
+        HorizontalLayout {
+            Rectangle {
+                width: 30px;
+                Text {
+                    text: "Transmit";
+                    color: white;
+                    rotation-angle: 270deg;
+                }
+                border-color: white;
+                border-width: 1px;
+            }
+            VerticalLayout {
+                ListView {
+                    for raw in raw_data: Rectangle {
+                        HorizontalLayout {
+                            Rectangle {
+                                width: parent.width * 30%;
+                                Text {
+                                    text: raw.id;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 20%;
+                                Text {
+                                    text: raw.len;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 50%;
+                                Text {
+                                    text: raw.data;
+                                    color: white;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

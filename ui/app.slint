@@ -7,6 +7,7 @@ import { viewPage } from "view_page.slint";
 import { filterPage } from "filter_page.slint";
 import { selectPage } from "page_selection.slint";
 import { initPage, socket_info } from "init_page.slint";
+import { raw_can, debugPage } from "debug_page.slint";
 
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
@@ -20,6 +21,7 @@ export component AppWindow inherits Window {
     in-out property <string> state;
     in-out property <int> bus_load;
     in-out property <int> bitrate;
+    in property <[raw_can]> raw_data;
 
     in-out property <int> active-page: 0;
 
@@ -109,6 +111,11 @@ export component AppWindow inherits Window {
                 open_dbc_file() => {
                     open_dbc_file()
                 }
+            }
+            if root.active-page == 2:
+            debugPage {
+                bitrate: bitrate;
+                raw_data: raw_data;
             }
         }
     }

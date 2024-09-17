@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 mod event_handler;
 use can_dbc::DBC;
-use event_handler::{CanHandler, DBCFile, Init, PacketFilter};
+use event_handler::{DBCFile, DebugHandler, Init, PacketFilter, ViewHandler};
 #[cfg(target_os = "windows")]
 use pcan_basic::{bus::UsbBus, socket::usb::UsbCanSocket};
 #[cfg(target_os = "linux")]
@@ -40,7 +40,9 @@ async fn main() -> io::Result<()> {
         init_event.run();
     });
 
-    let (start_tx, start_rx) = mpsc::channel();
+    let (start_tx_1, start_rx_1) = mpsc::channel();
+    let (start_tx_2, start_rx_2) = mpsc::channel();
+
     // Handle start event
     let ui_handle = ui.as_weak();
     ui.on_start(move |_name, _index, bitrate| {
@@ -52,7 +54,8 @@ async fn main() -> io::Result<()> {
                 ui.set_init_string(SharedString::from("No device found!!!"));
             } else {
                 ui.set_is_init(true);
-                let _ = start_tx.send((_name, bitrate));
+                let _ = start_tx_1.send((_name.clone(), bitrate.clone()));
+                let _ = start_tx_2.send((_name, bitrate));
             }
         }
         #[cfg(target_os = "windows")]
@@ -72,7 +75,7 @@ async fn main() -> io::Result<()> {
             match UsbCanSocket::open(usb_can, baudrate) {
                 Ok(socket) => {
                     ui_handle.unwrap().set_is_init(true);
-                    let _ = start_tx.send((socket, bitrate));
+                    let _ = start_tx_1.send((socket, bitrate));
                 }
                 Err(e) => {
                     ui_handle
@@ -85,8 +88,8 @@ async fn main() -> io::Result<()> {
 
     let ui_handle = ui.as_weak();
     tokio::spawn(async move {
-        if let Ok((can_if, bitrate)) = start_rx.recv() {
-            let mut can_handler = CanHandler {
+        if let Ok((can_if, bitrate)) = start_rx_1.recv() {
+            let mut can_handler = ViewHandler {
                 #[cfg(target_os = "windows")]
                 iface: can_if,
                 #[cfg(target_os = "linux")]
@@ -97,6 +100,24 @@ async fn main() -> io::Result<()> {
             };
             loop {
                 can_handler.process_can_messages();
+            }
+        }
+    });
+
+    let ui_handle = ui.as_weak();
+    tokio::spawn(async move {
+        if let Ok((can_if, bitrate)) = start_rx_2.recv() {
+            let mut can_handler = DebugHandler {
+                #[cfg(target_os = "windows")]
+                iface: can_if,
+                #[cfg(target_os = "linux")]
+                iface: &can_if,
+                ui_handle: &ui_handle,
+                bitrate: bitrate.to_string(),
+                filter: (0, 0xFFFFFFFF),
+            };
+            loop {
+                can_handler.run();
             }
         }
     });
