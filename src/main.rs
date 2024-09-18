@@ -118,7 +118,6 @@ async fn main() -> io::Result<()> {
             };
             loop {
                 can_handler.run();
-                can_handler.check_to_kill_thread();
             }
         }
     });
@@ -144,6 +143,12 @@ async fn main() -> io::Result<()> {
         };
         packet_filter.process_filter();
     });
+
+    ui.window().on_close_requested(|| {
+        println!("Closing the application...");
+        std::process::exit(0);
+    });
+
     ui.run().unwrap();
     Ok(())
 }

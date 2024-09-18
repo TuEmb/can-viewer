@@ -1,7 +1,7 @@
-use std::{collections::HashMap, process::exit, rc::Rc, time::Duration};
+use std::{collections::HashMap, rc::Rc, time::Duration};
 
 use crate::slint_generatedAppWindow::{raw_can, AppWindow};
-use slint::{ComponentHandle, Model, SharedString, VecModel, Weak};
+use slint::{Model, SharedString, VecModel, Weak};
 use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
 pub struct DebugHandler<'a> {
     #[cfg(target_os = "linux")]
@@ -14,14 +14,6 @@ pub struct DebugHandler<'a> {
 }
 
 impl<'a> DebugHandler<'a> {
-    pub fn check_to_kill_thread(&self) {
-        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-            if !ui.window().is_visible() {
-                exit(1);
-            }
-        });
-    }
-
     pub fn run(&mut self) {
         let can_socket = CanSocket::open(self.iface).unwrap();
         if let Ok(frame) = can_socket.read_frame() {

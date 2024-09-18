@@ -1,10 +1,10 @@
 use crate::slint_generatedAppWindow::{socket_info, AppWindow};
 #[cfg(target_os = "windows")]
 use pcan_basic::hw::attached_channels as available_interfaces;
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel, Weak};
+use slint::{ModelRc, SharedString, VecModel, Weak};
 #[cfg(target_os = "linux")]
 use socketcan::available_interfaces;
-use std::{process::exit, time::Duration};
+use std::time::Duration;
 pub struct Init<'a> {
     pub ui_handle: &'a Weak<AppWindow>,
 }
@@ -95,11 +95,6 @@ impl<'a> Init<'a> {
                     });
                 }
             };
-            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-                if !ui.window().is_visible() {
-                    exit(1);
-                }
-            });
             std::thread::sleep(Duration::from_millis(50));
         }
     }

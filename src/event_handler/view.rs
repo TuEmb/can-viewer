@@ -2,13 +2,12 @@ use can_dbc::DBC;
 use chrono::Utc;
 #[cfg(target_os = "windows")]
 use pcan_basic::socket::usb::UsbCanSocket;
-use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel, Weak};
+use slint::{Model, ModelRc, SharedString, VecModel, Weak};
 #[cfg(target_os = "linux")]
 use socketcan::{CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
 use std::{
     collections::HashMap,
     fmt::Write,
-    process::exit,
     rc::Rc,
     sync::{mpsc::Receiver, Arc, Mutex},
     thread::sleep,
@@ -30,13 +29,6 @@ static mut NEW_DBC_CHECK: bool = false;
 use super::{EVEN_COLOR, ODD_COLOR};
 
 impl<'a> ViewHandler<'a> {
-    pub fn check_to_kill_thread(&self) {
-        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-            if !ui.window().is_visible() {
-                exit(1);
-            }
-        });
-    }
     pub fn process_can_messages(&mut self) {
         if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
             #[cfg(target_os = "linux")]
@@ -76,7 +68,6 @@ impl<'a> ViewHandler<'a> {
         let mut start_bus_load = Instant::now();
         let mut total_bits = 0;
         loop {
-            self.check_to_kill_thread();
             let bus_state = match can_if.state().unwrap().unwrap() {
                 socketcan::nl::CanState::ErrorActive => "ERR_ACTIVE",
                 socketcan::nl::CanState::ErrorWarning => "ERR_WARNING",
