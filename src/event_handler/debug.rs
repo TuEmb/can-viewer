@@ -1,22 +1,20 @@
-use std::{collections::HashMap, rc::Rc, time::Duration};
+use std::{collections::HashMap, rc::Rc, sync::mpsc::Receiver, time::Duration};
 
 use crate::slint_generatedAppWindow::{raw_can, AppWindow};
 use slint::{Model, SharedString, VecModel, Weak};
-use socketcan::{CanSocket, EmbeddedFrame, Frame, Socket};
+use socketcan::{CanFrame, EmbeddedFrame, Frame};
+
+const MAX_LEN: usize = 1000;
 pub struct DebugHandler<'a> {
-    #[cfg(target_os = "linux")]
-    pub iface: &'a str,
-    #[cfg(target_os = "windows")]
-    pub iface: UsbCanSocket,
     pub ui_handle: &'a Weak<AppWindow>,
     pub bitrate: String,
     pub filter: (u32, u32),
+    pub can_rx: Receiver<CanFrame>,
 }
 
 impl<'a> DebugHandler<'a> {
     pub fn run(&mut self) {
-        let can_socket = CanSocket::open(self.iface).unwrap();
-        if let Ok(frame) = can_socket.read_frame() {
+        if let Ok(frame) = self.can_rx.recv() {
             let frame_id = frame.raw_id() & !0x80000000;
             if frame_id >= self.filter.0 && frame_id <= self.filter.1 {
                 let bitrate = self.bitrate().unwrap();
@@ -26,6 +24,9 @@ impl<'a> DebugHandler<'a> {
                     let mut vec_data = Vec::default();
                     for data in raw_data.iter() {
                         vec_data.push(data);
+                    }
+                    if vec_data.len() > MAX_LEN {
+                        vec_data.remove(0);
                     }
                     vec_data.push(raw_can {
                         data: SharedString::from(format!("{:?}", frame.data())),

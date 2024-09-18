@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 mod event_handler;
 use can_dbc::DBC;
-use event_handler::{DBCFile, DebugHandler, Init, PacketFilter, ViewHandler};
+use event_handler::{CanHandler, DBCFile, DebugHandler, Init, PacketFilter};
 #[cfg(target_os = "windows")]
 use pcan_basic::{bus::UsbBus, socket::usb::UsbCanSocket};
 #[cfg(target_os = "linux")]
@@ -20,7 +20,10 @@ slint::include_modules!();
 #[tokio::main]
 async fn main() -> io::Result<()> {
     #[cfg(target_os = "linux")]
-    privilege_request();
+    if privilege_request()? == privilege_rs::Privilege::User {
+        println!("Failed to request the privilege");
+        std::process::exit(0);
+    }
     let ui = AppWindow::new().unwrap();
 
     let (tx, rx) = mpsc::channel::<DBC>();
@@ -86,10 +89,11 @@ async fn main() -> io::Result<()> {
         }
     });
 
+    let (can_tx, can_rx) = mpsc::channel();
     let ui_handle = ui.as_weak();
     tokio::spawn(async move {
         if let Ok((can_if, bitrate)) = start_rx_1.recv() {
-            let mut can_handler = ViewHandler {
+            let mut can_handler = CanHandler {
                 #[cfg(target_os = "windows")]
                 iface: can_if,
                 #[cfg(target_os = "linux")]
@@ -97,6 +101,7 @@ async fn main() -> io::Result<()> {
                 ui_handle: &ui_handle,
                 mspc_rx: &rx,
                 bitrate: bitrate.to_string(),
+                can_tx,
             };
             loop {
                 can_handler.process_can_messages();
@@ -106,15 +111,12 @@ async fn main() -> io::Result<()> {
 
     let ui_handle = ui.as_weak();
     tokio::spawn(async move {
-        if let Ok((can_if, bitrate)) = start_rx_2.recv() {
+        if let Ok((_can_if, bitrate)) = start_rx_2.recv() {
             let mut can_handler = DebugHandler {
-                #[cfg(target_os = "windows")]
-                iface: can_if,
-                #[cfg(target_os = "linux")]
-                iface: &can_if,
                 ui_handle: &ui_handle,
                 bitrate: bitrate.to_string(),
                 filter: (0, 0xFFFFFFFF),
+                can_rx,
             };
             loop {
                 can_handler.run();

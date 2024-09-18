@@ -4,31 +4,32 @@ use chrono::Utc;
 use pcan_basic::socket::usb::UsbCanSocket;
 use slint::{Model, ModelRc, SharedString, VecModel, Weak};
 #[cfg(target_os = "linux")]
-use socketcan::{CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
+use socketcan::{CanFrame, CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
 use std::{
     collections::HashMap,
     fmt::Write,
     rc::Rc,
-    sync::{mpsc::Receiver, Arc, Mutex},
+    sync::{mpsc::Receiver, mpsc::Sender, Arc, Mutex},
     thread::sleep,
     time::{Duration, Instant},
 };
 
 use crate::slint_generatedAppWindow::{AppWindow, CanData, CanSignal};
-pub struct ViewHandler<'a> {
+pub struct CanHandler<'a> {
     #[cfg(target_os = "linux")]
     pub iface: &'a str,
     #[cfg(target_os = "windows")]
     pub iface: UsbCanSocket,
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_rx: &'a Arc<Mutex<Receiver<DBC>>>,
+    pub can_tx: Sender<CanFrame>,
     pub bitrate: String,
 }
 
 static mut NEW_DBC_CHECK: bool = false;
 use super::{EVEN_COLOR, ODD_COLOR};
 
-impl<'a> ViewHandler<'a> {
+impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
         if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
             #[cfg(target_os = "linux")]
@@ -107,6 +108,7 @@ impl<'a> ViewHandler<'a> {
                 }
             }
             if let Ok(frame) = can_socket.read_frame() {
+                let _ = self.can_tx.send(frame);
                 total_bits += (frame.len() + 6) * 8; // Data length + overhead (approximation)
                 let frame_id = frame.raw_id() & !0x80000000;
                 for message in dbc.messages() {
