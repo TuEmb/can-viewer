@@ -28,6 +28,7 @@ export component AppWindow inherits Window {
     callback open_dbc_file();
     callback filter_id(CanData, bool);
     callback start(string, int, string);
+    callback can_transmit(bool, string, string);
     title: @tr("CAN VIEWER (version 0.2.2)");
     icon: @image-url("images/can_viewer_128px.png");
     background: #1a1f2b;
@@ -121,6 +122,9 @@ export component AppWindow inherits Window {
                 raw_data: raw_data;
                 change_state(en) => {
                     is_debug_en = en;
+                }
+                can_transmit(is_extended, can_id, can_data) => {
+                    can_transmit(is_extended, can_id, can_data)
                 }
             }
         }

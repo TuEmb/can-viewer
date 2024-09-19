@@ -38,8 +38,9 @@ impl<'a> CanHandler<'a> {
             let _ = can_if.bring_down();
             let _ = can_if.set_bitrate(self.bitrate().unwrap(), None);
             let _ = can_if.bring_up();
-            let can_socket = self.open_can_socket();
-            self.process_ui_events(can_socket, can_if);
+            let tx_can_socket = self.open_can_socket();
+            let rx_can_socket = self.open_can_socket();
+            self.process_ui_events(tx_can_socket, rx_can_socket, can_if);
         }
         #[cfg(target_os = "windows")]
         self.process_ui_events(dbc);
@@ -63,9 +64,54 @@ impl<'a> CanHandler<'a> {
         }
     }
     #[cfg(target_os = "linux")]
-    fn process_ui_events(&mut self, can_socket: CanSocket, can_if: CanInterface) {
+    fn process_ui_events(
+        &mut self,
+        tx_can_socket: CanSocket,
+        rx_can_socket: CanSocket,
+        can_if: CanInterface,
+    ) {
+        use socketcan::{ExtendedId, StandardId};
+
         let mut start_bus_load = Instant::now();
         let mut total_bits = 0;
+        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+            ui.on_can_transmit(move |is_extended, can_id, can_data| {
+                match Self::convert_hex_string_u32(&can_id) {
+                    Ok(id) => match Self::convert_hex_string_arr(&can_data) {
+                        Ok(data) => {
+                            if is_extended {
+                                match ExtendedId::new(id) {
+                                    Some(id) => {
+                                        let can_frame = CanFrame::new(id, &data).unwrap();
+                                        let _ = tx_can_socket.write_frame(&can_frame);
+                                    }
+                                    None => {
+                                        println!("Invalid CAN extended ID {}", id)
+                                    }
+                                }
+                            } else {
+                                match StandardId::new(id as u16) {
+                                    Some(id) => {
+                                        let can_frame = CanFrame::new(id, &data).unwrap();
+                                        let _ = tx_can_socket.write_frame(&can_frame);
+                                    }
+                                    None => {
+                                        println!("Invalid CAN standard ID {}", id)
+                                    }
+                                }
+                            };
+                        }
+                        Err(e) => {
+                            println!("Failed to parse can data {}, error {}", can_data, e);
+                        }
+                    },
+                    Err(e) => {
+                        println!("Failed to parse can id {}, error: {}", can_id, e);
+                    }
+                }
+            });
+        });
+
         loop {
             let bus_state = match can_if.state().unwrap().unwrap() {
                 socketcan::nl::CanState::ErrorActive => "ERR_ACTIVE",
@@ -103,7 +149,7 @@ impl<'a> CanHandler<'a> {
                     }
                 }
             }
-            if let Ok(frame) = can_socket.read_frame() {
+            if let Ok(frame) = rx_can_socket.read_frame() {
                 let _ = self.can_tx.send(frame);
                 total_bits += (frame.len() + 6) * 8; // Data length + overhead (approximation)
                 let frame_id = frame.raw_id() & !0x80000000;
@@ -291,6 +337,30 @@ impl<'a> CanHandler<'a> {
 
         // Return the padded vector
         padded_data
+    }
+
+    fn convert_hex_string_u32(hex_str: &str) -> Result<u32, String> {
+        // Attempt to parse the hex string as a u32
+        u32::from_str_radix(hex_str, 16).map_err(|e| format!("Failed to convert to u32: {}", e))
+    }
+
+    fn convert_hex_string_arr(hex_str: &str) -> Result<Vec<u8>, String> {
+        // Remove any whitespace from the input string
+        let hex_str = hex_str.trim();
+
+        // Ensure the string has an even length
+        if hex_str.len() % 2 != 0 {
+            return Err("Hex string must have an even number of characters".to_string());
+        }
+
+        // Convert the string into a vector of u8 bytes
+        (0..hex_str.len())
+            .step_by(2)
+            .map(|i| {
+                u8::from_str_radix(&hex_str[i..i + 2], 16)
+                    .map_err(|e| format!("Failed to convert to u8: {}", e))
+            })
+            .collect()
     }
 
     fn array_to_hex_string(data: &[u8]) -> String {

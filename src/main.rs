@@ -49,7 +49,6 @@ async fn main() -> io::Result<()> {
     // Handle start event
     let ui_handle = ui.as_weak();
     ui.on_start(move |_name, _index, bitrate| {
-        // start_tx.send((_name, _index));
         #[cfg(target_os = "linux")]
         {
             let ui = ui_handle.unwrap();

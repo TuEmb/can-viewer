@@ -39,27 +39,21 @@ export component StartPauseButton inherits Rectangle {
 }
 
 export component CanTransmitData inherits Rectangle {
-    callback send(bool, string, string, string);
+    callback send(bool, string, string);
     HorizontalLayout {
         is_extended := MyCheckBox {
             text: "Extended Frame";
         }
         can_id := LineEdit {
-            placeholder-text: "ID (hex)";
-            input-type: decimal;
-        }
-        can_len := LineEdit {
-            placeholder-text: "length";
-            input-type: number;
+            placeholder-text: "ID (hex) - eg: 1814FF12";
         }
         can_data := LineEdit {
-            placeholder-text: "data (hex)";
-            input-type: decimal;
+            placeholder-text: "data (hex) - eg: 1A2B3C4D";
         }
         Button {
             text: "send";
             clicked => {
-                send(is_extended.checked, can_id.text, can_len.text, can_data.text)
+                send(is_extended.checked, can_id.text, can_data.text)
             }
         }
     }
@@ -76,6 +70,7 @@ export component debugPage inherits Rectangle {
     {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
     {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"}];
     callback change_state(bool);
+    callback can_transmit(bool, string, string);
 
     VerticalLayout {
         HorizontalLayout {
@@ -182,16 +177,24 @@ export component debugPage inherits Rectangle {
             }
             VerticalLayout {
                 CanTransmitData {
-
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
                 }
                 CanTransmitData {
-                    
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
                 }
                 CanTransmitData {
-                    
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
                 }
                 CanTransmitData {
-                    
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
                 }
             }
         }
