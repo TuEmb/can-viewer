@@ -2,11 +2,43 @@
 import { ListView, Button } from "std-widgets.slint";
 
 export struct raw_can {
+    time: string,
     id: string,
     len: int,
     data: string
 }
+
+
+export component StartPauseButton inherits Rectangle {
+    callback clicked();
+    in-out property <bool> en: false;
+    border-radius: 5px;
+    width: 30px;
+    height: 30px;
+    states [
+        pressed when touch-area.pressed : {
+        }
+
+        hover when touch-area.has-hover: {
+            background: #ffffff.darker(0.4);
+        }
+    ]
+    image := Image {
+        source: root.en ? @image-url("images/play.png") : @image-url("images/pause.png");
+        width: parent.width * 80%;
+        height: parent.height * 80%;
+        colorize: white;
+    }
+    touch-area := TouchArea {
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                clicked();
+            }
+        }
+    }
+}
 export component debugPage inherits Rectangle {
+    in-out property <bool> en;
     in property <string> state;
     in property <string> bitrate;
     in property <string> bus_load;
@@ -15,8 +47,17 @@ export component debugPage inherits Rectangle {
     {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
     {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
     {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"}];
+    callback change_state(bool);
+
     VerticalLayout {
         HorizontalLayout {
+            play_button:= StartPauseButton {
+                en: en;
+                clicked() => {
+                    en = !en;
+                    change_state(en);
+                }
+            }
             Rectangle {}
             Rectangle {
                 max-height: 30px;
@@ -63,21 +104,28 @@ export component debugPage inherits Rectangle {
                     for raw in raw_data: Rectangle {
                         HorizontalLayout {
                             Rectangle {
-                                width: parent.width * 30%;
+                                width: parent.width * 40%;
+                                Text {
+                                    text: raw.time;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 10%;
                                 Text {
                                     text: raw.id;
                                     color: white;
                                 }
                             }
                             Rectangle {
-                                width: parent.width * 20%;
+                                width: parent.width * 10%;
                                 Text {
                                     text: raw.len;
                                     color: white;
                                 }
                             }
                             Rectangle {
-                                width: parent.width * 50%;
+                                width: parent.width * 40%;
                                 Text {
                                     text: raw.data;
                                     color: white;

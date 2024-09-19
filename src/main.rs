@@ -101,6 +101,7 @@ async fn main() -> io::Result<()> {
                 ui_handle: &ui_handle,
                 mspc_rx: &rx,
                 bitrate: bitrate.to_string(),
+                dbc: None,
                 can_tx,
             };
             loop {

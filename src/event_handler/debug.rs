@@ -1,6 +1,12 @@
-use std::{collections::HashMap, rc::Rc, sync::mpsc::Receiver, time::Duration};
+use std::{
+    collections::HashMap,
+    rc::Rc,
+    sync::mpsc::{self, Receiver},
+    time::Duration,
+};
 
 use crate::slint_generatedAppWindow::{raw_can, AppWindow};
+use chrono::Local;
 use slint::{Model, SharedString, VecModel, Weak};
 use socketcan::{CanFrame, EmbeddedFrame, Frame};
 
@@ -14,32 +20,57 @@ pub struct DebugHandler<'a> {
 
 impl<'a> DebugHandler<'a> {
     pub fn run(&mut self) {
-        if let Ok(frame) = self.can_rx.recv() {
-            let frame_id = frame.raw_id() & !0x80000000;
-            if frame_id >= self.filter.0 && frame_id <= self.filter.1 {
-                let bitrate = self.bitrate().unwrap();
-                let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-                    ui.set_bitrate(bitrate as i32);
-                    let raw_data = ui.get_raw_data();
-                    let mut vec_data = Vec::default();
-                    for data in raw_data.iter() {
-                        vec_data.push(data);
-                    }
-                    if vec_data.len() > MAX_LEN {
-                        vec_data.remove(0);
-                    }
-                    vec_data.push(raw_can {
-                        data: SharedString::from(format!("{:?}", frame.data())),
-                        id: SharedString::from(frame_id.to_string()),
-                        len: frame.len() as i32,
-                    });
-                    vec_data.reverse();
-                    let message_vec: Rc<VecModel<raw_can>> = Rc::new(VecModel::from(vec_data));
-                    ui.set_raw_data(message_vec.into());
-                });
+        let (tx, rx) = mpsc::channel();
+        let mut debug_enable = true;
+        loop {
+            if let Ok(en) = rx.try_recv() {
+                debug_enable = en;
             }
-        } else {
-            std::thread::sleep(Duration::from_millis(1));
+            if debug_enable {
+                if let Ok(frame) = self.can_rx.try_recv() {
+                    let frame_id = frame.raw_id() & !0x80000000;
+                    if frame_id >= self.filter.0 && frame_id <= self.filter.1 {
+                        let bitrate = self.bitrate().unwrap();
+                        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                            ui.set_bitrate(bitrate as i32);
+                            let raw_data = ui.get_raw_data();
+                            let mut vec_data = Vec::default();
+                            for data in raw_data.iter() {
+                                vec_data.push(data);
+                            }
+                            if vec_data.len() > MAX_LEN {
+                                vec_data.remove(MAX_LEN);
+                            }
+                            vec_data.insert(
+                                0,
+                                raw_can {
+                                    time: SharedString::from(format!(
+                                        "{:?}",
+                                        Local::now().to_string().replace('"', "")
+                                    )),
+                                    data: SharedString::from(format!("{:?}", frame.data())),
+                                    id: SharedString::from(format!("0x{:08X}", frame_id)),
+                                    len: frame.len() as i32,
+                                },
+                            );
+                            let message_vec: Rc<VecModel<raw_can>> =
+                                Rc::new(VecModel::from(vec_data));
+                            ui.set_raw_data(message_vec.into());
+                        });
+                    }
+                } else {
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+            } else {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            let tx_clone = tx.clone();
+            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                let enable = ui.get_is_debug_en();
+                if enable != debug_enable {
+                    let _ = tx_clone.send(enable);
+                }
+            });
         }
     }
 

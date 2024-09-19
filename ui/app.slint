@@ -12,8 +12,8 @@ import { raw_can, debugPage } from "debug_page.slint";
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
     in property <bool> is_new_dbc: false;
-    in property <bool> is_first_open: true;
     in property <bool> is_init: false;
+    out property <bool> is_debug_en: false;
     in property <string> init_string: "Please select CAN device to start";
     in property <socket_info> can_sockets;
     in property <[CanData]> messages;
@@ -114,10 +114,14 @@ export component AppWindow inherits Window {
             }
             if root.active-page == 2:
             debugPage {
+                en: is_debug_en;
                 state: state;
                 bus_load: bus_load;
                 bitrate: bitrate;
                 raw_data: raw_data;
+                change_state(en) => {
+                    is_debug_en = en;
+                }
             }
         }
     }
