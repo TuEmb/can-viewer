@@ -44,10 +44,9 @@ impl<'a> DebugHandler<'a> {
                             vec_data.insert(
                                 0,
                                 raw_can {
-                                    time: SharedString::from(format!(
-                                        "{:?}",
-                                        Local::now().to_string().replace('"', "")
-                                    )),
+                                    time: SharedString::from(
+                                        Local::now().to_string().replace('"', "").to_string(),
+                                    ),
                                     data: SharedString::from(format!("{:?}", frame.data())),
                                     id: SharedString::from(format!("0x{:08X}", frame_id)),
                                     len: frame.len() as i32,

@@ -1,5 +1,6 @@
 
-import { ListView, Button } from "std-widgets.slint";
+import { ListView, Button, LineEdit, CheckBox } from "std-widgets.slint";
+import { MyCheckBox } from "filter_page.slint";
 
 export struct raw_can {
     time: string,
@@ -17,6 +18,7 @@ export component StartPauseButton inherits Rectangle {
     height: 30px;
     states [
         pressed when touch-area.pressed : {
+            background: #ffffff.darker(0.8);
         }
 
         hover when touch-area.has-hover: {
@@ -30,13 +32,39 @@ export component StartPauseButton inherits Rectangle {
         colorize: white;
     }
     touch-area := TouchArea {
-        pointer-event(event) => {
-            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
-                clicked();
+        clicked => {
+            clicked();
+        }
+    }
+}
+
+export component CanTransmitData inherits Rectangle {
+    callback send(bool, string, string, string);
+    HorizontalLayout {
+        is_extended := MyCheckBox {
+            text: "Extended Frame";
+        }
+        can_id := LineEdit {
+            placeholder-text: "ID (hex)";
+            input-type: decimal;
+        }
+        can_len := LineEdit {
+            placeholder-text: "length";
+            input-type: number;
+        }
+        can_data := LineEdit {
+            placeholder-text: "data (hex)";
+            input-type: decimal;
+        }
+        Button {
+            text: "send";
+            clicked => {
+                send(is_extended.checked, can_id.text, can_len.text, can_data.text)
             }
         }
     }
 }
+
 export component debugPage inherits Rectangle {
     in-out property <bool> en;
     in property <string> state;
@@ -153,32 +181,17 @@ export component debugPage inherits Rectangle {
                 border-width: 1px;
             }
             VerticalLayout {
-                ListView {
-                    for raw in raw_data: Rectangle {
-                        HorizontalLayout {
-                            Rectangle {
-                                width: parent.width * 30%;
-                                Text {
-                                    text: raw.id;
-                                    color: white;
-                                }
-                            }
-                            Rectangle {
-                                width: parent.width * 20%;
-                                Text {
-                                    text: raw.len;
-                                    color: white;
-                                }
-                            }
-                            Rectangle {
-                                width: parent.width * 50%;
-                                Text {
-                                    text: raw.data;
-                                    color: white;
-                                }
-                            }
-                        }
-                    }
+                CanTransmitData {
+
+                }
+                CanTransmitData {
+                    
+                }
+                CanTransmitData {
+                    
+                }
+                CanTransmitData {
+                    
                 }
             }
         }
