@@ -1,0 +1,265 @@
+
+import { ListView, Button, LineEdit, CheckBox } from "std-widgets.slint";
+import { MyCheckBox } from "filter_page.slint";
+
+export struct raw_can {
+    time: string,
+    id: string,
+    len: int,
+    data: string
+}
+
+export component VerificationIcon inherits Rectangle {
+    in property <bool> is_ok: true;
+    if is_ok:
+    Image {
+        source: @image-url("images/green_tick.png");
+        width: 25px;
+        height: 25px;
+    }
+    if !is_ok:
+    Image {
+        source: @image-url("images/red_cross.png");
+        width: 25px;
+        height: 25px;
+    }
+}
+
+export component StartPauseButton inherits Rectangle {
+    callback clicked();
+    in-out property <bool> en: false;
+    border-radius: 5px;
+    width: 30px;
+    height: 30px;
+    states [
+        pressed when touch-area.pressed : {
+            background: #ffffff.darker(0.8);
+        }
+
+        hover when touch-area.has-hover: {
+            background: #ffffff.darker(0.4);
+        }
+    ]
+    image := Image {
+        source: root.en ? @image-url("images/play.png") : @image-url("images/pause.png");
+        width: parent.width * 80%;
+        height: parent.height * 80%;
+        colorize: white;
+    }
+    touch-area := TouchArea {
+        clicked => {
+            clicked();
+        }
+    }
+}
+
+export component CanTransmitData inherits Rectangle {
+    callback send(bool, string, string);
+    out property <bool> can_id_check: false;
+    out property <bool> can_data_check: false;
+    callback can_id_check_string(bool, string) -> bool;
+    callback can_data_check_string(string) -> bool;
+    HorizontalLayout {
+        is_extended := MyCheckBox {
+            text: "Extended Frame";
+            toggled(en) => {
+                can_id_check = can_id_check_string(en, can_id.text);
+            }
+        }
+        can_id := LineEdit {
+            width: 200px;
+            placeholder-text: "ID (hex) - eg: 1814FF12";
+            edited => {
+                can_id_check = can_id_check_string(is_extended.checked, can_id.text);
+            }
+        }
+        VerificationIcon {
+            is_ok: can_id_check;
+        }
+        can_data := LineEdit {
+            width: 200px;
+            placeholder-text: "data (hex) - eg: 1A2B3C4D";
+            edited => {
+                can_data_check = can_data_check_string(can_data.text);
+            }
+        }
+        VerificationIcon {
+            is_ok: can_data_check;
+        }
+        Button {
+            text: "send";
+            enabled: can_id_check && can_data_check;
+            clicked => {
+                send(is_extended.checked, can_id.text, can_data.text)
+            }
+        }
+    }
+}
+
+export component debugPage inherits Rectangle {
+    in-out property <bool> en;
+    in property <string> state;
+    in property <string> bitrate;
+    in property <string> bus_load;
+    in-out property <[raw_can]> raw_data: [
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"},
+    {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"}];
+    callback change_state(bool);
+    callback can_transmit(bool, string, string);
+    callback can_id_check_string(bool, string) -> bool;
+    callback can_data_check_string(string) -> bool;
+
+    VerticalLayout {
+        HorizontalLayout {
+            play_button:= StartPauseButton {
+                en: en;
+                clicked() => {
+                    en = !en;
+                    change_state(en);
+                }
+            }
+            Rectangle {}
+            Rectangle {
+                max-height: 30px;
+                Text {
+                    text: "State: " + state;
+                    color: white;
+                }
+            }
+            Rectangle {}
+            Rectangle {
+                Text {
+                    text: "Bitrate: " + bitrate;
+                    color: white;
+                }
+            }
+            Rectangle {}
+            Rectangle {
+                Text {
+                    text: "Bus Load: " + bus_load + "%";
+                    color: white;
+                }
+            }
+            Rectangle {
+                width: 50px;
+            }
+        }
+        Rectangle {
+            height: 1px;
+            background: white;
+        }
+        HorizontalLayout {
+            Rectangle {
+                width: 30px;
+                Text {
+                    text: "Receive";
+                    color: white;
+                    rotation-angle: 270deg;
+                }
+                border-color: white;
+                border-width: 1px;
+            }
+            VerticalLayout {
+                ListView {
+                    for raw in raw_data: Rectangle {
+                        HorizontalLayout {
+                            Rectangle {
+                                width: parent.width * 40%;
+                                Text {
+                                    text: raw.time;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 10%;
+                                Text {
+                                    text: raw.id;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 10%;
+                                Text {
+                                    text: raw.len;
+                                    color: white;
+                                }
+                            }
+                            Rectangle {
+                                width: parent.width * 40%;
+                                Text {
+                                    text: raw.data;
+                                    color: white;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Rectangle {
+            height: 1px;
+            border-color: white;
+            border-width: 1px;
+        }
+        HorizontalLayout {
+            Rectangle {
+                width: 30px;
+                Text {
+                    text: "Transmit";
+                    color: white;
+                    rotation-angle: 270deg;
+                }
+                border-color: white;
+                border-width: 1px;
+            }
+            VerticalLayout {
+                CanTransmitData {
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
+                    }
+                }
+                CanTransmitData {
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
+                    }
+                }
+                CanTransmitData {
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
+                    }
+                }
+                CanTransmitData {
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
+                    }
+                }
+            }
+        }
+    }
+}

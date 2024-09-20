@@ -1,52 +1,64 @@
 use can_dbc::DBC;
 use chrono::Utc;
 #[cfg(target_os = "windows")]
-use pcan_basic::socket::usb::UsbCanSocket;
-use slint::{Model, VecModel, Weak};
-use slint::{ModelRc, SharedString};
+use pcan_basic::{
+    bus::UsbBus,
+    socket::{usb::UsbCanSocket, CanFrame},
+};
+use slint::{Model, ModelRc, SharedString, VecModel, Weak};
 #[cfg(target_os = "linux")]
-use socketcan::{CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
-use std::collections::HashMap;
-use std::fmt::Write;
-use std::rc::Rc;
-use std::sync::mpsc::Receiver;
-use std::sync::{Arc, Mutex};
-use std::thread::sleep;
-use std::time::Duration;
-use std::time::Instant;
+use socketcan::{CanFrame, CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
+use std::{
+    collections::HashMap,
+    fmt::Write,
+    rc::Rc,
+    sync::{mpsc::Receiver, mpsc::Sender, Arc, Mutex},
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
-use crate::slint_generatedAppWindow::AppWindow;
-use crate::slint_generatedAppWindow::CanData;
-use crate::slint_generatedAppWindow::CanSignal;
+use crate::slint_generatedAppWindow::{AppWindow, CanData, CanSignal};
 pub struct CanHandler<'a> {
     #[cfg(target_os = "linux")]
     pub iface: &'a str,
     #[cfg(target_os = "windows")]
-    pub iface: UsbCanSocket,
+    pub iface: UsbBus,
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_rx: &'a Arc<Mutex<Receiver<DBC>>>,
+    pub can_tx: Sender<CanFrame>,
     pub bitrate: String,
+    pub dbc: Option<DBC>,
 }
 
 static mut NEW_DBC_CHECK: bool = false;
+#[cfg(target_os = "windows")]
+use super::p_can_bitrate;
 use super::{EVEN_COLOR, ODD_COLOR};
 
 impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
-        if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
-            #[cfg(target_os = "linux")]
-            {
-                let can_if = CanInterface::open(self.iface).unwrap();
-                let _ = can_if.bring_down();
-                let _ = can_if.set_bitrate(self.bitrate().unwrap(), None);
-                let _ = can_if.bring_up();
-                let can_socket = self.open_can_socket();
-                self.process_ui_events(dbc, can_socket, can_if);
-            }
-            #[cfg(target_os = "windows")]
-            self.process_ui_events(dbc);
+        #[cfg(target_os = "linux")]
+        {
+            let can_if = CanInterface::open(self.iface).unwrap();
+            let _ = can_if.bring_down();
+            let _ = can_if.set_bitrate(self.bitrate().unwrap(), None);
+            let _ = can_if.bring_up();
+            let tx_can_socket = self.open_can_socket();
+            let rx_can_socket = self.open_can_socket();
+            self.process_ui_events(tx_can_socket, rx_can_socket, can_if);
         }
-        sleep(Duration::from_millis(10));
+        #[cfg(target_os = "windows")]
+        {
+            let baudrate = p_can_bitrate(&self.bitrate).unwrap();
+            match UsbCanSocket::open(self.iface, baudrate) {
+                Ok(socket) => {
+                    self.process_ui_events(socket);
+                }
+                Err(e) => {
+                    println!("Failed to open CAN socket: {:?}", e);
+                }
+            }
+        }
     }
     #[cfg(target_os = "linux")]
     fn open_can_socket(&self) -> CanSocket {
@@ -67,9 +79,54 @@ impl<'a> CanHandler<'a> {
         }
     }
     #[cfg(target_os = "linux")]
-    fn process_ui_events(&self, dbc: DBC, can_socket: CanSocket, can_if: CanInterface) {
+    fn process_ui_events(
+        &mut self,
+        tx_can_socket: CanSocket,
+        rx_can_socket: CanSocket,
+        can_if: CanInterface,
+    ) {
+        use socketcan::{ExtendedId, StandardId};
+
         let mut start_bus_load = Instant::now();
         let mut total_bits = 0;
+        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+            ui.on_can_transmit(move |is_extended, can_id, can_data| {
+                match Self::convert_hex_string_u32(&can_id) {
+                    Ok(id) => match Self::convert_hex_string_arr(&can_data) {
+                        Ok(data) => {
+                            if is_extended {
+                                match ExtendedId::new(id) {
+                                    Some(id) => {
+                                        let can_frame = CanFrame::new(id, &data).unwrap();
+                                        let _ = tx_can_socket.write_frame(&can_frame);
+                                    }
+                                    None => {
+                                        println!("Invalid CAN extended ID {}", id)
+                                    }
+                                }
+                            } else {
+                                match StandardId::new(id as u16) {
+                                    Some(id) => {
+                                        let can_frame = CanFrame::new(id, &data).unwrap();
+                                        let _ = tx_can_socket.write_frame(&can_frame);
+                                    }
+                                    None => {
+                                        println!("Invalid CAN standard ID {}", id)
+                                    }
+                                }
+                            };
+                        }
+                        Err(e) => {
+                            println!("Failed to parse can data {}, error {}", can_data, e);
+                        }
+                    },
+                    Err(e) => {
+                        println!("Failed to parse can id {}, error: {}", can_id, e);
+                    }
+                }
+            });
+        });
+
         loop {
             let bus_state = match can_if.state().unwrap().unwrap() {
                 socketcan::nl::CanState::ErrorActive => "ERR_ACTIVE",
@@ -90,11 +147,7 @@ impl<'a> CanHandler<'a> {
             };
             let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
                 if ui.get_is_new_dbc() {
-                    if ui.get_is_first_open() {
-                        ui.set_is_first_open(false);
-                    } else {
-                        NEW_DBC_CHECK = true;
-                    }
+                    NEW_DBC_CHECK = true;
                     ui.set_is_new_dbc(false);
                 }
                 ui.set_state(bus_state.into());
@@ -105,80 +158,17 @@ impl<'a> CanHandler<'a> {
             });
             unsafe {
                 if NEW_DBC_CHECK {
-                    NEW_DBC_CHECK = false;
-                    break;
+                    if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
+                        self.dbc = Some(dbc);
+                        NEW_DBC_CHECK = false;
+                    }
                 }
             }
-            if let Ok(frame) = can_socket.read_frame() {
+            if let Ok(frame) = rx_can_socket.read_frame() {
+                let _ = self.can_tx.send(frame);
                 total_bits += (frame.len() + 6) * 8; // Data length + overhead (approximation)
                 let frame_id = frame.raw_id() & !0x80000000;
-                for message in dbc.messages() {
-                    if frame_id == (message.message_id().raw() & !0x80000000) {
-                        let padding_data = Self::pad_to_8_bytes(frame.data());
-                        let hex_string = Self::array_to_hex_string(frame.data());
-                        let signal_data = message.parse_from_can(&padding_data);
-                        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-                            let is_filter = ui.get_is_filter();
-                            let messages: ModelRc<CanData> = if !is_filter {
-                                ui.get_messages()
-                            } else {
-                                ui.get_filter_messages()
-                            };
-                            Self::update_ui_with_signals(
-                                &messages,
-                                frame_id,
-                                signal_data,
-                                hex_string,
-                            );
-                        });
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(target_os = "windows")]
-    fn process_ui_events(&mut self, dbc: DBC) {
-        use pcan_basic::{error::PcanError, socket::RecvCan};
-        let mut start_bus_load = Instant::now();
-        let mut total_bits = 0;
-        loop {
-            let bitrate = self.bitrate().unwrap();
-            let busload = if start_bus_load.elapsed() >= Duration::from_millis(1000) {
-                start_bus_load = Instant::now();
-                let bus_load = (total_bits as f64 / bitrate as f64) * 100.0;
-                total_bits = 0;
-                bus_load
-            } else {
-                0.0
-            };
-            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
-                if ui.get_is_new_dbc() {
-                    if ui.get_is_first_open() {
-                        ui.set_is_first_open(false);
-                    } else {
-                        NEW_DBC_CHECK = true;
-                    }
-                    ui.set_is_new_dbc(false);
-                }
-                ui.set_bitrate(bitrate as i32);
-                if busload > 0.0 {
-                    ui.set_bus_load(busload as i32);
-                }
-            });
-            unsafe {
-                if NEW_DBC_CHECK {
-                    NEW_DBC_CHECK = false;
-                    break;
-                }
-            }
-            match self.iface.recv_frame() {
-                Ok(frame) => {
-                    let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-                        ui.set_state("OK".into());
-                    });
-                    total_bits += (frame.dlc() as u32 + 6) * 8; // Data length + overhead (approximation)
-                    let id = frame.can_id();
-                    let frame_id = id & !0x80000000;
+                if let Some(dbc) = &self.dbc {
                     for message in dbc.messages() {
                         if frame_id == (message.message_id().raw() & !0x80000000) {
                             let padding_data = Self::pad_to_8_bytes(frame.data());
@@ -201,12 +191,113 @@ impl<'a> CanHandler<'a> {
                         }
                     }
                 }
+            } else {
+                std::thread::sleep(Duration::from_millis(1));
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    fn process_ui_events(&mut self, can_if: UsbCanSocket) {
+        use pcan_basic::{
+            error::PcanError,
+            socket::{MessageType, RecvCan, SendCan},
+        };
+        let mut start_bus_load = Instant::now();
+        let mut total_bits = 0;
+        let refer_socket = UsbCanSocket::open_with_usb_bus(self.iface);
+        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+            ui.on_can_transmit(move |is_extended, can_id, can_data| {
+                match Self::convert_hex_string_u32(&can_id) {
+                    Ok(id) => match Self::convert_hex_string_arr(&can_data) {
+                        Ok(data) => {
+                            if is_extended {
+                                let can_frame =
+                                    CanFrame::new(id, MessageType::Extended, &data).unwrap();
+                                let _ = refer_socket.send(can_frame);
+                            } else {
+                                let can_frame =
+                                    CanFrame::new(id, MessageType::Standard, &data).unwrap();
+                                let _ = refer_socket.send(can_frame);
+                            };
+                        }
+                        Err(e) => {
+                            println!("Failed to parse can data {}, error {}", can_data, e);
+                        }
+                    },
+                    Err(e) => {
+                        println!("Failed to parse can id {}, error: {}", can_id, e);
+                    }
+                }
+            });
+        });
+        loop {
+            let bitrate = self.bitrate().unwrap();
+            let busload = if start_bus_load.elapsed() >= Duration::from_millis(1000) {
+                start_bus_load = Instant::now();
+                let bus_load = (total_bits as f64 / bitrate as f64) * 100.0;
+                total_bits = 0;
+                bus_load
+            } else {
+                0.0
+            };
+            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
+                if ui.get_is_new_dbc() {
+                    NEW_DBC_CHECK = true;
+                    ui.set_is_new_dbc(false);
+                }
+                ui.set_bitrate(bitrate as i32);
+                if busload > 0.0 {
+                    ui.set_bus_load(busload as i32);
+                }
+            });
+            unsafe {
+                if NEW_DBC_CHECK {
+                    if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
+                        self.dbc = Some(dbc);
+                        NEW_DBC_CHECK = false;
+                    }
+                }
+            }
+            match can_if.recv_frame() {
+                Ok(frame) => {
+                    let _ = self.can_tx.send(frame);
+                    let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                        ui.set_state("OK".into());
+                    });
+                    total_bits += (frame.dlc() as u32 + 6) * 8; // Data length + overhead (approximation)
+                    if let Some(dbc) = &self.dbc {
+                        let id = frame.can_id();
+                        let frame_id = id & !0x80000000;
+                        for message in dbc.messages() {
+                            if frame_id == (message.message_id().raw() & !0x80000000) {
+                                let padding_data = Self::pad_to_8_bytes(frame.data());
+                                let hex_string = Self::array_to_hex_string(frame.data());
+                                let signal_data = message.parse_from_can(&padding_data);
+                                let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                                    let is_filter = ui.get_is_filter();
+                                    let messages: ModelRc<CanData> = if !is_filter {
+                                        ui.get_messages()
+                                    } else {
+                                        ui.get_filter_messages()
+                                    };
+                                    Self::update_ui_with_signals(
+                                        &messages,
+                                        frame_id,
+                                        signal_data,
+                                        hex_string,
+                                    );
+                                });
+                            }
+                        }
+                    }
+                }
                 Err(e) => {
                     let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
                         if e != PcanError::QrcvEmpty {
                             ui.set_state(format!("{:?}", e).into());
                         }
                     });
+                    sleep(Duration::from_millis(1));
                 }
             }
         }
@@ -291,6 +382,30 @@ impl<'a> CanHandler<'a> {
 
         // Return the padded vector
         padded_data
+    }
+
+    fn convert_hex_string_u32(hex_str: &str) -> Result<u32, String> {
+        // Attempt to parse the hex string as a u32
+        u32::from_str_radix(hex_str, 16).map_err(|e| format!("Failed to convert to u32: {}", e))
+    }
+
+    fn convert_hex_string_arr(hex_str: &str) -> Result<Vec<u8>, String> {
+        // Remove any whitespace from the input string
+        let hex_str = hex_str.trim();
+
+        // Ensure the string has an even length
+        if hex_str.len() % 2 != 0 {
+            return Err("Hex string must have an even number of characters".to_string());
+        }
+
+        // Convert the string into a vector of u8 bytes
+        (0..hex_str.len())
+            .step_by(2)
+            .map(|i| {
+                u8::from_str_radix(&hex_str[i..i + 2], 16)
+                    .map_err(|e| format!("Failed to convert to u8: {}", e))
+            })
+            .collect()
     }
 
     fn array_to_hex_string(data: &[u8]) -> String {

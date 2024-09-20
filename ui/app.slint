@@ -7,12 +7,13 @@ import { viewPage } from "view_page.slint";
 import { filterPage } from "filter_page.slint";
 import { selectPage } from "page_selection.slint";
 import { initPage, socket_info } from "init_page.slint";
+import { raw_can, debugPage } from "debug_page.slint";
 
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
     in property <bool> is_new_dbc: false;
-    in property <bool> is_first_open: true;
     in property <bool> is_init: false;
+    out property <bool> is_debug_en: false;
     in property <string> init_string: "Please select CAN device to start";
     in property <socket_info> can_sockets;
     in property <[CanData]> messages;
@@ -20,12 +21,17 @@ export component AppWindow inherits Window {
     in-out property <string> state;
     in-out property <int> bus_load;
     in-out property <int> bitrate;
+    in property <[raw_can]> raw_data;
 
     in-out property <int> active-page: 0;
 
     callback open_dbc_file();
     callback filter_id(CanData, bool);
     callback start(string, int, string);
+    callback can_transmit(bool, string, string);
+    callback can_id_check_string(bool, string) -> bool;
+    callback can_data_check_string(string) -> bool;
+    callback change_state(bool);
     title: @tr("CAN VIEWER (version 0.2.2)");
     icon: @image-url("images/can_viewer_128px.png");
     background: #1a1f2b;
@@ -108,6 +114,27 @@ export component AppWindow inherits Window {
                 filter_messages: root.filter_messages;
                 open_dbc_file() => {
                     open_dbc_file()
+                }
+            }
+            if root.active-page == 2:
+            debugPage {
+                en: is_debug_en;
+                state: state;
+                bus_load: bus_load;
+                bitrate: bitrate;
+                raw_data: raw_data;
+                change_state(en) => {
+                    is_debug_en = en;
+                    change_state(en);
+                }
+                can_transmit(is_extended, can_id, can_data) => {
+                    can_transmit(is_extended, can_id, can_data)
+                }
+                can_id_check_string(is_extended, id) => {
+                    can_id_check_string(is_extended, id)
+                }
+                can_data_check_string(data) => {
+                    can_data_check_string(data)
                 }
             }
         }
