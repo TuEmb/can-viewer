@@ -29,6 +29,8 @@ export component AppWindow inherits Window {
     callback filter_id(CanData, bool);
     callback start(string, int, string);
     callback can_transmit(bool, string, string);
+    callback can_id_check_string(bool, string) -> bool;
+    callback can_data_check_string(string) -> bool;
     title: @tr("CAN VIEWER (version 0.2.2)");
     icon: @image-url("images/can_viewer_128px.png");
     background: #1a1f2b;
@@ -125,6 +127,12 @@ export component AppWindow inherits Window {
                 }
                 can_transmit(is_extended, can_id, can_data) => {
                     can_transmit(is_extended, can_id, can_data)
+                }
+                can_id_check_string(is_extended, id) => {
+                    can_id_check_string(is_extended, id)
+                }
+                can_data_check_string(data) => {
+                    can_data_check_string(data)
                 }
             }
         }

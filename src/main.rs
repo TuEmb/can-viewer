@@ -151,6 +151,34 @@ async fn main() -> io::Result<()> {
         std::process::exit(0);
     });
 
+    ui.on_can_id_check_string(move |is_extended, can_id| is_valid_can_id(is_extended, &can_id));
+
+    ui.on_can_data_check_string(move |can_data| is_valid_can_data(&can_data));
+
     ui.run().unwrap();
     Ok(())
+}
+
+fn is_valid_can_id(is_extended: bool, can_id: &str) -> bool {
+    // Try to parse the string as a hex number
+    match u32::from_str_radix(can_id, 16) {
+        Ok(id) => {
+            if is_extended {
+                id <= 0x1FFFFFFF // Extended CAN ID (29-bit max)
+            } else {
+                id <= 0x7FF // Standard CAN ID (11-bit max)
+            }
+        }
+        Err(_) => false, // If parsing fails, it's not a valid hex string
+    }
+}
+
+fn is_valid_can_data(can_data: &str) -> bool {
+    // CAN data is valid if it's a hex string of even length up to 16 characters (8 bytes)
+    if can_data.len() % 2 != 0 || can_data.len() > 16 {
+        return false;
+    }
+
+    // Try to parse the data as hex
+    can_data.chars().all(|c| c.is_ascii_hexdigit())
 }

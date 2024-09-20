@@ -9,6 +9,21 @@ export struct raw_can {
     data: string
 }
 
+export component VerificationIcon inherits Rectangle {
+    in property <bool> is_ok: true;
+    if is_ok:
+    Image {
+        source: @image-url("images/green_tick.png");
+        width: 25px;
+        height: 25px;
+    }
+    if !is_ok:
+    Image {
+        source: @image-url("images/red_cross.png");
+        width: 25px;
+        height: 25px;
+    }
+}
 
 export component StartPauseButton inherits Rectangle {
     callback clicked();
@@ -40,18 +55,35 @@ export component StartPauseButton inherits Rectangle {
 
 export component CanTransmitData inherits Rectangle {
     callback send(bool, string, string);
+    out property <bool> can_id_check: false;
+    out property <bool> can_data_check: false;
+    callback can_id_check_string(bool, string) -> bool;
+    callback can_data_check_string(string) -> bool;
     HorizontalLayout {
         is_extended := MyCheckBox {
             text: "Extended Frame";
         }
         can_id := LineEdit {
             placeholder-text: "ID (hex) - eg: 1814FF12";
+            edited => {
+                can_id_check = can_id_check_string(is_extended.checked, can_id.text);
+            }
+        }
+        VerificationIcon {
+            is_ok: can_id_check;
         }
         can_data := LineEdit {
             placeholder-text: "data (hex) - eg: 1A2B3C4D";
+            edited => {
+                can_data_check = can_data_check_string(can_data.text);
+            }
+        }
+        VerificationIcon {
+            is_ok: can_data_check;
         }
         Button {
             text: "send";
+            enabled: can_id_check && can_data_check;
             clicked => {
                 send(is_extended.checked, can_id.text, can_data.text)
             }
@@ -71,6 +103,8 @@ export component debugPage inherits Rectangle {
     {id: "181FF1FA", len: 4, data: "00 01 02 03 04 05 06 07"}];
     callback change_state(bool);
     callback can_transmit(bool, string, string);
+    callback can_id_check_string(bool, string) -> bool;
+    callback can_data_check_string(string) -> bool;
 
     VerticalLayout {
         HorizontalLayout {
@@ -180,20 +214,44 @@ export component debugPage inherits Rectangle {
                     send(is_extended, can_id, can_data) => {
                         can_transmit(is_extended, can_id, can_data);
                     }
-                }
-                CanTransmitData {
-                    send(is_extended, can_id, can_data) => {
-                        can_transmit(is_extended, can_id, can_data);
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
                     }
                 }
                 CanTransmitData {
                     send(is_extended, can_id, can_data) => {
                         can_transmit(is_extended, can_id, can_data);
                     }
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
+                    }
                 }
                 CanTransmitData {
                     send(is_extended, can_id, can_data) => {
                         can_transmit(is_extended, can_id, can_data);
+                    }
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
+                    }
+                }
+                CanTransmitData {
+                    send(is_extended, can_id, can_data) => {
+                        can_transmit(is_extended, can_id, can_data);
+                    }
+                    can_id_check_string(is_extended, id) => {
+                        can_id_check_string(is_extended, id)
+                    }
+                    can_data_check_string(data) => {
+                        can_data_check_string(data)
                     }
                 }
             }
