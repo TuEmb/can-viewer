@@ -62,6 +62,9 @@ export component CanTransmitData inherits Rectangle {
     HorizontalLayout {
         is_extended := MyCheckBox {
             text: "Extended Frame";
+            toggled(en) => {
+                can_id_check = can_id_check_string(en, can_id.text);
+            }
         }
         can_id := LineEdit {
             width: 200px;
