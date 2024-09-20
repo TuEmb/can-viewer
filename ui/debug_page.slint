@@ -64,6 +64,7 @@ export component CanTransmitData inherits Rectangle {
             text: "Extended Frame";
         }
         can_id := LineEdit {
+            width: 200px;
             placeholder-text: "ID (hex) - eg: 1814FF12";
             edited => {
                 can_id_check = can_id_check_string(is_extended.checked, can_id.text);
@@ -73,6 +74,7 @@ export component CanTransmitData inherits Rectangle {
             is_ok: can_id_check;
         }
         can_data := LineEdit {
+            width: 200px;
             placeholder-text: "data (hex) - eg: 1A2B3C4D";
             edited => {
                 can_data_check = can_data_check_string(can_data.text);
