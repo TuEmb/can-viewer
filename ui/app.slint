@@ -31,6 +31,7 @@ export component AppWindow inherits Window {
     callback can_transmit(bool, string, string);
     callback can_id_check_string(bool, string) -> bool;
     callback can_data_check_string(string) -> bool;
+    callback change_state(bool);
     title: @tr("CAN VIEWER (version 0.2.2)");
     icon: @image-url("images/can_viewer_128px.png");
     background: #1a1f2b;
@@ -124,6 +125,7 @@ export component AppWindow inherits Window {
                 raw_data: raw_data;
                 change_state(en) => {
                     is_debug_en = en;
+                    change_state(en);
                 }
                 can_transmit(is_extended, can_id, can_data) => {
                     can_transmit(is_extended, can_id, can_data)

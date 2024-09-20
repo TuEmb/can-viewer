@@ -6,7 +6,7 @@ mod event_handler;
 use can_dbc::DBC;
 use event_handler::{CanHandler, DBCFile, DebugHandler, Init, PacketFilter};
 #[cfg(target_os = "windows")]
-use pcan_basic::{bus::UsbBus, socket::usb::UsbCanSocket};
+use pcan_basic::bus::UsbBus;
 #[cfg(target_os = "linux")]
 use privilege_rs::privilege_request;
 #[cfg(target_os = "windows")]
@@ -62,7 +62,6 @@ async fn main() -> io::Result<()> {
         }
         #[cfg(target_os = "windows")]
         {
-            use event_handler::p_can_bitrate;
             let ui = ui_handle.unwrap();
             let get_device_handle = match ui.get_can_sockets().index.row_data(_index as usize) {
                 Some(device) => device,
@@ -72,19 +71,9 @@ async fn main() -> io::Result<()> {
                 }
             };
             let usb_can = UsbBus::try_from(get_device_handle as u16).unwrap();
-            let ui_handle = ui.as_weak();
-            let baudrate = p_can_bitrate(&bitrate).unwrap();
-            match UsbCanSocket::open(usb_can, baudrate) {
-                Ok(socket) => {
-                    ui_handle.unwrap().set_is_init(true);
-                    let _ = start_tx_1.send((socket, bitrate));
-                }
-                Err(e) => {
-                    ui_handle
-                        .unwrap()
-                        .set_init_string(SharedString::from(format!("Failed to start: {:?}", e)));
-                }
-            }
+            let _ = start_tx_1.send((usb_can, bitrate.clone()));
+            let _ = start_tx_2.send((usb_can, bitrate));
+            ui.set_is_init(true);
         }
     });
 

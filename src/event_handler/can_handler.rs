@@ -1,7 +1,8 @@
 use can_dbc::DBC;
 use chrono::Utc;
+use pcan_basic::bus::UsbBus;
 #[cfg(target_os = "windows")]
-use pcan_basic::socket::usb::UsbCanSocket;
+use pcan_basic::socket::{usb::UsbCanSocket, CanFrame};
 use slint::{Model, ModelRc, SharedString, VecModel, Weak};
 #[cfg(target_os = "linux")]
 use socketcan::{CanFrame, CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
@@ -19,7 +20,7 @@ pub struct CanHandler<'a> {
     #[cfg(target_os = "linux")]
     pub iface: &'a str,
     #[cfg(target_os = "windows")]
-    pub iface: UsbCanSocket,
+    pub iface: UsbBus,
     pub ui_handle: &'a Weak<AppWindow>,
     pub mspc_rx: &'a Arc<Mutex<Receiver<DBC>>>,
     pub can_tx: Sender<CanFrame>,
@@ -28,7 +29,7 @@ pub struct CanHandler<'a> {
 }
 
 static mut NEW_DBC_CHECK: bool = false;
-use super::{EVEN_COLOR, ODD_COLOR};
+use super::{p_can_bitrate, EVEN_COLOR, ODD_COLOR};
 
 impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
@@ -43,7 +44,17 @@ impl<'a> CanHandler<'a> {
             self.process_ui_events(tx_can_socket, rx_can_socket, can_if);
         }
         #[cfg(target_os = "windows")]
-        self.process_ui_events(dbc);
+        {
+            let baudrate = p_can_bitrate(&self.bitrate).unwrap();
+            match UsbCanSocket::open(self.iface, baudrate) {
+                Ok(socket) => {
+                    self.process_ui_events(socket);
+                }
+                Err(e) => {
+                    println!("Failed to open CAN socket: {:?}", e);
+                }
+            }
+        }
     }
     #[cfg(target_os = "linux")]
     fn open_can_socket(&self) -> CanSocket {
@@ -182,11 +193,39 @@ impl<'a> CanHandler<'a> {
         }
     }
     #[cfg(target_os = "windows")]
-    fn process_ui_events(&mut self, dbc: DBC) {
-        use pcan_basic::{error::PcanError, socket::RecvCan};
+    fn process_ui_events(&mut self, can_if: UsbCanSocket) {
+        use pcan_basic::{
+            error::PcanError,
+            socket::{MessageType, RecvCan, SendCan},
+        };
         let mut start_bus_load = Instant::now();
         let mut total_bits = 0;
-        self.check_to_kill_thread();
+        let refer_socket = UsbCanSocket::open_with_usb_bus(self.iface);
+        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+            ui.on_can_transmit(move |is_extended, can_id, can_data| {
+                match Self::convert_hex_string_u32(&can_id) {
+                    Ok(id) => match Self::convert_hex_string_arr(&can_data) {
+                        Ok(data) => {
+                            if is_extended {
+                                let can_frame =
+                                    CanFrame::new(id, MessageType::Extended, &data).unwrap();
+                                let _ = refer_socket.send(can_frame);
+                            } else {
+                                let can_frame =
+                                    CanFrame::new(id, MessageType::Standard, &data).unwrap();
+                                let _ = refer_socket.send(can_frame);
+                            };
+                        }
+                        Err(e) => {
+                            println!("Failed to parse can data {}, error {}", can_data, e);
+                        }
+                    },
+                    Err(e) => {
+                        println!("Failed to parse can id {}, error: {}", can_id, e);
+                    }
+                }
+            });
+        });
         loop {
             let bitrate = self.bitrate().unwrap();
             let busload = if start_bus_load.elapsed() >= Duration::from_millis(1000) {
@@ -199,11 +238,7 @@ impl<'a> CanHandler<'a> {
             };
             let _ = self.ui_handle.upgrade_in_event_loop(move |ui| unsafe {
                 if ui.get_is_new_dbc() {
-                    if ui.get_is_first_open() {
-                        ui.set_is_first_open(false);
-                    } else {
-                        NEW_DBC_CHECK = true;
-                    }
+                    NEW_DBC_CHECK = true;
                     ui.set_is_new_dbc(false);
                 }
                 ui.set_bitrate(bitrate as i32);
@@ -213,37 +248,42 @@ impl<'a> CanHandler<'a> {
             });
             unsafe {
                 if NEW_DBC_CHECK {
-                    NEW_DBC_CHECK = false;
-                    break;
+                    if let Ok(dbc) = self.mspc_rx.lock().unwrap().try_recv() {
+                        self.dbc = Some(dbc);
+                        NEW_DBC_CHECK = false;
+                    }
                 }
             }
-            match self.iface.recv_frame() {
+            match can_if.recv_frame() {
                 Ok(frame) => {
+                    let _ = self.can_tx.send(frame);
                     let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
                         ui.set_state("OK".into());
                     });
                     total_bits += (frame.dlc() as u32 + 6) * 8; // Data length + overhead (approximation)
-                    let id = frame.can_id();
-                    let frame_id = id & !0x80000000;
-                    for message in dbc.messages() {
-                        if frame_id == (message.message_id().raw() & !0x80000000) {
-                            let padding_data = Self::pad_to_8_bytes(frame.data());
-                            let hex_string = Self::array_to_hex_string(frame.data());
-                            let signal_data = message.parse_from_can(&padding_data);
-                            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-                                let is_filter = ui.get_is_filter();
-                                let messages: ModelRc<CanData> = if !is_filter {
-                                    ui.get_messages()
-                                } else {
-                                    ui.get_filter_messages()
-                                };
-                                Self::update_ui_with_signals(
-                                    &messages,
-                                    frame_id,
-                                    signal_data,
-                                    hex_string,
-                                );
-                            });
+                    if let Some(dbc) = &self.dbc {
+                        let id = frame.can_id();
+                        let frame_id = id & !0x80000000;
+                        for message in dbc.messages() {
+                            if frame_id == (message.message_id().raw() & !0x80000000) {
+                                let padding_data = Self::pad_to_8_bytes(frame.data());
+                                let hex_string = Self::array_to_hex_string(frame.data());
+                                let signal_data = message.parse_from_can(&padding_data);
+                                let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+                                    let is_filter = ui.get_is_filter();
+                                    let messages: ModelRc<CanData> = if !is_filter {
+                                        ui.get_messages()
+                                    } else {
+                                        ui.get_filter_messages()
+                                    };
+                                    Self::update_ui_with_signals(
+                                        &messages,
+                                        frame_id,
+                                        signal_data,
+                                        hex_string,
+                                    );
+                                });
+                            }
                         }
                     }
                 }
@@ -253,6 +293,7 @@ impl<'a> CanHandler<'a> {
                             ui.set_state(format!("{:?}", e).into());
                         }
                     });
+                    sleep(Duration::from_millis(1));
                 }
             }
         }

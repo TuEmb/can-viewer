@@ -7,7 +7,10 @@ use std::{
 
 use crate::slint_generatedAppWindow::{raw_can, AppWindow};
 use chrono::Local;
+#[cfg(target_os = "windows")]
+use pcan_basic::socket::CanFrame;
 use slint::{Model, SharedString, VecModel, Weak};
+#[cfg(target_os = "linux")]
 use socketcan::{CanFrame, EmbeddedFrame, Frame};
 
 const MAX_LEN: usize = 1000;
@@ -21,13 +24,22 @@ pub struct DebugHandler<'a> {
 impl<'a> DebugHandler<'a> {
     pub fn run(&mut self) {
         let (tx, rx) = mpsc::channel();
-        let mut debug_enable = true;
+        let mut debug_enable = false;
+        let tx_clone = tx.clone();
+        let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
+            ui.on_change_state(move |state| {
+                let _ = tx_clone.send(state);
+            });
+        });
         loop {
             if let Ok(en) = rx.try_recv() {
                 debug_enable = en;
             }
             if debug_enable {
                 if let Ok(frame) = self.can_rx.try_recv() {
+                    #[cfg(target_os = "windows")]
+                    let frame_id = frame.can_id() & !0x80000000;
+                    #[cfg(target_os = "linux")]
                     let frame_id = frame.raw_id() & !0x80000000;
                     if frame_id >= self.filter.0 && frame_id <= self.filter.1 {
                         let bitrate = self.bitrate().unwrap();
@@ -49,7 +61,10 @@ impl<'a> DebugHandler<'a> {
                                     ),
                                     data: SharedString::from(format!("{:?}", frame.data())),
                                     id: SharedString::from(format!("0x{:08X}", frame_id)),
+                                    #[cfg(target_os = "linux")]
                                     len: frame.len() as i32,
+                                    #[cfg(target_os = "windows")]
+                                    len: frame.dlc() as i32,
                                 },
                             );
                             let message_vec: Rc<VecModel<raw_can>> =
@@ -63,13 +78,6 @@ impl<'a> DebugHandler<'a> {
             } else {
                 std::thread::sleep(Duration::from_millis(50));
             }
-            let tx_clone = tx.clone();
-            let _ = self.ui_handle.upgrade_in_event_loop(move |ui| {
-                let enable = ui.get_is_debug_en();
-                if enable != debug_enable {
-                    let _ = tx_clone.send(enable);
-                }
-            });
         }
     }
 
