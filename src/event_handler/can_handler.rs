@@ -1,8 +1,10 @@
 use can_dbc::DBC;
 use chrono::Utc;
-use pcan_basic::bus::UsbBus;
 #[cfg(target_os = "windows")]
-use pcan_basic::socket::{usb::UsbCanSocket, CanFrame};
+use pcan_basic::{
+    bus::UsbBus,
+    socket::{usb::UsbCanSocket, CanFrame},
+};
 use slint::{Model, ModelRc, SharedString, VecModel, Weak};
 #[cfg(target_os = "linux")]
 use socketcan::{CanFrame, CanInterface, CanSocket, EmbeddedFrame, Frame, Socket};
@@ -29,7 +31,9 @@ pub struct CanHandler<'a> {
 }
 
 static mut NEW_DBC_CHECK: bool = false;
-use super::{p_can_bitrate, EVEN_COLOR, ODD_COLOR};
+#[cfg(target_os = "windows")]
+use super::p_can_bitrate;
+use super::{EVEN_COLOR, ODD_COLOR};
 
 impl<'a> CanHandler<'a> {
     pub fn process_can_messages(&mut self) {
