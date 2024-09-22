@@ -60,7 +60,11 @@ impl<'a> DebugHandler<'a> {
                                         Local::now().to_string().replace('"', "").to_string(),
                                     ),
                                     data: SharedString::from(format!("{:?}", frame.data())),
-                                    id: SharedString::from(format!("0x{:08X}", frame_id)),
+                                    id: if frame.is_extended() {
+                                        SharedString::from(format!("0x{:08X}", frame_id))
+                                    } else {
+                                        SharedString::from(format!("0x{:03X}", frame_id))
+                                    },
                                     #[cfg(target_os = "linux")]
                                     len: frame.len() as i32,
                                     #[cfg(target_os = "windows")]
