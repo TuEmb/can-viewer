@@ -1,5 +1,44 @@
 import {HorizontalBox, VerticalBox } from "std-widgets.slint";
 
+// === DBC Editor Data Structures ===
+
+// Signal data for editing in DBC editor
+export struct EditableSignalData {
+    index: int,
+    name: string,
+    start_bit: int,
+    signal_size: int,
+    byte_order: int,      // 0=little-endian, 1=big-endian
+    value_type: int,      // 0=unsigned, 1=signed
+    factor: string,       // Use string for float display
+    offset: string,
+    min_val: string,
+    max_val: string,
+    unit: string,
+}
+
+// Message data for editing in DBC editor
+export struct EditableMessageData {
+    index: int,
+    message_id: string,   // Hex string "0x7E8" format
+    is_extended: bool,
+    name: string,
+    dlc: int,
+    transmitter: string,
+    signal_count: int,
+}
+
+// Compact signal info for list display
+export struct SignalListItem {
+    index: int,
+    name: string,
+    start_bit: int,
+    size: int,
+    unit: string,
+}
+
+// === CAN Viewer Data Structures ===
+
 export struct CanSignal {
     signal_name: string,
     signal_value: string,

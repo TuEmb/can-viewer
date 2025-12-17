@@ -1,0 +1,526 @@
+import { ListView, Button, LineEdit, ComboBox, ScrollView } from "std-widgets.slint";
+import { EditableMessageData, EditableSignalData, SignalListItem } from "messages.slint";
+import { MyCheckBox } from "filter_page.slint";
+
+// Message list item component
+component MessageListItem inherits Rectangle {
+    in property <EditableMessageData> data;
+    in property <bool> selected: false;
+    callback clicked();
+
+    height: 35px;
+    background: selected ? #3a4055 : transparent;
+    border-radius: 3px;
+
+    states [
+        hover when touch-area.has-hover && !selected: {
+            background: #2a2f3a;
+        }
+    ]
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 10px;
+
+        Text {
+            text: data.message_id;
+            color: #88ccff;
+            width: 80px;
+            vertical-alignment: center;
+        }
+        Text {
+            text: data.name;
+            color: white;
+            vertical-alignment: center;
+        }
+        Rectangle { }
+        Text {
+            text: "(" + data.signal_count + " sig)";
+            color: #888888;
+            vertical-alignment: center;
+        }
+    }
+
+    touch-area := TouchArea {
+        clicked => { clicked(); }
+    }
+}
+
+// Signal list item component
+component SignalListItemView inherits Rectangle {
+    in property <SignalListItem> data;
+    in property <bool> selected: false;
+    callback clicked();
+
+    height: 28px;
+    background: selected ? #3a4055 : transparent;
+    border-radius: 3px;
+
+    states [
+        hover when touch-area.has-hover && !selected: {
+            background: #2a2f3a;
+        }
+    ]
+
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 8px;
+
+        Text {
+            text: data.name;
+            color: white;
+            width: 120px;
+            vertical-alignment: center;
+        }
+        Text {
+            text: "bit " + data.start_bit + ":" + data.size;
+            color: #888888;
+            width: 80px;
+            vertical-alignment: center;
+        }
+        Text {
+            text: data.unit;
+            color: #888888;
+            vertical-alignment: center;
+        }
+    }
+
+    touch-area := TouchArea {
+        clicked => { clicked(); }
+    }
+}
+
+// Form field component
+component FormField inherits HorizontalLayout {
+    in property <string> label;
+    in-out property <string> value;
+    in property <bool> enabled: true;
+    in property <length> label-width: 80px;
+    callback edited(string);
+
+    spacing: 5px;
+    height: 30px;
+
+    Rectangle {
+        width: label-width;
+        Text {
+            text: label;
+            color: white;
+            vertical-alignment: center;
+        }
+    }
+    LineEdit {
+        enabled: enabled;
+        text: value;
+        edited => {
+            value = self.text;
+            edited(self.text);
+        }
+    }
+}
+
+// Main DBC Editor Page
+export component dbcEditorPage inherits Rectangle {
+    in property <[EditableMessageData]> messages: [];
+    in property <[SignalListItem]> current-message-signals: [];
+    in-out property <int> selected-message-index: -1;
+    in-out property <int> selected-signal-index: -1;
+    in-out property <EditableMessageData> selected-message;
+    in-out property <EditableSignalData> selected-signal;
+    in property <bool> has-unsaved-changes: false;
+    in property <string> loaded-file-path: "";
+
+    // Callbacks to Rust backend
+    callback load-dbc-for-edit();
+    callback save-dbc();
+    callback save-dbc-as();
+    callback select-message(int);
+    callback select-signal(int);
+    callback add-message();
+    callback remove-message(int);
+    callback update-message(EditableMessageData);
+    callback add-signal(int);
+    callback remove-signal(int, int);
+    callback update-signal(int, EditableSignalData);
+
+    VerticalLayout {
+        // Toolbar
+        HorizontalLayout {
+            height: 45px;
+            spacing: 10px;
+            padding: 8px;
+
+            Button {
+                text: "Load DBC";
+                clicked => { load-dbc-for-edit(); }
+            }
+            Button {
+                text: "Save";
+                enabled: has-unsaved-changes;
+                clicked => { save-dbc(); }
+            }
+            Button {
+                text: "Save As...";
+                clicked => { save-dbc-as(); }
+            }
+
+            Rectangle { }
+
+            Text {
+                text: loaded-file-path != "" ? loaded-file-path : "No file loaded";
+                color: #aaaaaa;
+                vertical-alignment: center;
+            }
+
+            if has-unsaved-changes:
+            Text {
+                text: " (unsaved)";
+                color: #ff6666;
+                vertical-alignment: center;
+            }
+        }
+
+        Rectangle {
+            height: 1px;
+            background: #444444;
+        }
+
+        // Main content area
+        HorizontalLayout {
+            // Left panel - Message list
+            Rectangle {
+                width: 280px;
+                border-width: 1px;
+                border-color: #333333;
+                background: #1a1f2b;
+
+                VerticalLayout {
+                    // Header
+                    HorizontalLayout {
+                        height: 35px;
+                        padding: 8px;
+
+                        Text {
+                            text: "Messages";
+                            color: white;
+                            font-weight: 700;
+                            vertical-alignment: center;
+                        }
+                        Rectangle { }
+                        Button {
+                            text: "+";
+                            width: 30px;
+                            clicked => { add-message(); }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 1px;
+                        background: #333333;
+                    }
+
+                    // Message list
+                    ListView {
+                        for msg[idx] in messages: MessageListItem {
+                            data: msg;
+                            selected: idx == selected-message-index;
+                            clicked => { select-message(idx); }
+                        }
+                    }
+                }
+            }
+
+            // Right panel
+            VerticalLayout {
+                // Message details section
+                if selected-message-index >= 0:
+                Rectangle {
+                    height: 160px;
+                    border-width: 1px;
+                    border-color: #333333;
+                    background: #1a1f2b;
+
+                    VerticalLayout {
+                        padding: 10px;
+                        spacing: 8px;
+
+                        Text {
+                            text: "Message Details";
+                            color: white;
+                            font-weight: 700;
+                        }
+
+                        HorizontalLayout {
+                            spacing: 15px;
+
+                            FormField {
+                                label: "ID (hex):";
+                                value: selected-message.message_id;
+                                edited(val) => {
+                                    selected-message.message_id = val;
+                                }
+                            }
+
+                            HorizontalLayout {
+                                spacing: 5px;
+                                width: 150px;
+
+                                MyCheckBox {
+                                    text: "Extended";
+                                    checked: selected-message.is_extended;
+                                    toggled(val) => {
+                                        selected-message.is_extended = val;
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 15px;
+
+                            FormField {
+                                label: "Name:";
+                                value: selected-message.name;
+                                edited(val) => {
+                                    selected-message.name = val;
+                                }
+                            }
+
+                            FormField {
+                                label: "DLC:";
+                                value: selected-message.dlc;
+                                label-width: 40px;
+                                edited(val) => { }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 10px;
+
+                            Button {
+                                text: "Update Message";
+                                clicked => { update-message(selected-message); }
+                            }
+                            Button {
+                                text: "Delete Message";
+                                clicked => { remove-message(selected-message-index); }
+                            }
+                        }
+                    }
+                }
+
+                // Signal list section
+                if selected-message-index >= 0:
+                Rectangle {
+                    min-height: 150px;
+                    border-width: 1px;
+                    border-color: #333333;
+                    background: #1a1f2b;
+
+                    VerticalLayout {
+                        // Header
+                        HorizontalLayout {
+                            height: 35px;
+                            padding: 8px;
+
+                            Text {
+                                text: "Signals";
+                                color: white;
+                                font-weight: 700;
+                                vertical-alignment: center;
+                            }
+                            Rectangle { }
+                            Button {
+                                text: "+";
+                                width: 30px;
+                                clicked => { add-signal(selected-message-index); }
+                            }
+                        }
+
+                        Rectangle {
+                            height: 1px;
+                            background: #333333;
+                        }
+
+                        // Signal list
+                        ListView {
+                            for sig[idx] in current-message-signals: SignalListItemView {
+                                data: sig;
+                                selected: idx == selected-signal-index;
+                                clicked => { select-signal(idx); }
+                            }
+                        }
+                    }
+                }
+
+                // Signal editor panel
+                if selected-signal-index >= 0:
+                Rectangle {
+                    height: 280px;
+                    border-width: 1px;
+                    border-color: #333333;
+                    background: #1a1f2b;
+
+                    VerticalLayout {
+                        padding: 10px;
+                        spacing: 6px;
+
+                        Text {
+                            text: "Signal Editor";
+                            color: white;
+                            font-weight: 700;
+                        }
+
+                        FormField {
+                            label: "Name:";
+                            value: selected-signal.name;
+                            edited(val) => {
+                                selected-signal.name = val;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 15px;
+
+                            FormField {
+                                label: "Start Bit:";
+                                value: selected-signal.start_bit;
+                                label-width: 70px;
+                                edited(val) => { }
+                            }
+
+                            FormField {
+                                label: "Size:";
+                                value: selected-signal.signal_size;
+                                label-width: 40px;
+                                edited(val) => { }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 15px;
+                            height: 30px;
+
+                            Rectangle {
+                                width: 80px;
+                                Text {
+                                    text: "Byte Order:";
+                                    color: white;
+                                    vertical-alignment: center;
+                                }
+                            }
+                            ComboBox {
+                                model: ["Little Endian", "Big Endian"];
+                                current-index: selected-signal.byte_order;
+                                selected(val) => {
+                                    selected-signal.byte_order = self.current-index;
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 15px;
+                            height: 30px;
+
+                            Rectangle {
+                                width: 80px;
+                                Text {
+                                    text: "Value Type:";
+                                    color: white;
+                                    vertical-alignment: center;
+                                }
+                            }
+                            ComboBox {
+                                model: ["Unsigned", "Signed"];
+                                current-index: selected-signal.value_type;
+                                selected(val) => {
+                                    selected-signal.value_type = self.current-index;
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 15px;
+
+                            FormField {
+                                label: "Factor:";
+                                value: selected-signal.factor;
+                                label-width: 50px;
+                                edited(val) => {
+                                    selected-signal.factor = val;
+                                }
+                            }
+
+                            FormField {
+                                label: "Offset:";
+                                value: selected-signal.offset;
+                                label-width: 50px;
+                                edited(val) => {
+                                    selected-signal.offset = val;
+                                }
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 15px;
+
+                            FormField {
+                                label: "Min:";
+                                value: selected-signal.min_val;
+                                label-width: 35px;
+                                edited(val) => {
+                                    selected-signal.min_val = val;
+                                }
+                            }
+
+                            FormField {
+                                label: "Max:";
+                                value: selected-signal.max_val;
+                                label-width: 35px;
+                                edited(val) => {
+                                    selected-signal.max_val = val;
+                                }
+                            }
+                        }
+
+                        FormField {
+                            label: "Unit:";
+                            value: selected-signal.unit;
+                            label-width: 50px;
+                            edited(val) => {
+                                selected-signal.unit = val;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 10px;
+
+                            Button {
+                                text: "Update Signal";
+                                clicked => { update-signal(selected-message-index, selected-signal); }
+                            }
+                            Button {
+                                text: "Delete Signal";
+                                clicked => { remove-signal(selected-message-index, selected-signal-index); }
+                            }
+                        }
+                    }
+                }
+
+                // Empty state when no message selected
+                if selected-message-index < 0:
+                Rectangle {
+                    background: #1a1f2b;
+                    Text {
+                        text: "Select a message to view details";
+                        color: #666666;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}

@@ -12,9 +12,11 @@ rfd = "0.14.1"
 slint = { version = "1.7.1", default-features = false, features = ["backend-winit", "compat-1-2", "renderer-winit-femtovg"] }
 tokio = { version = "1.39.3", features = ["full"] }
 
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3.9", features = ["winuser"] }
-pcan-basic = { git = "https://github.com/TuEmb/pcan-basic.git", branch="main"}
+# NOTE: pcan-basic repo (https://github.com/TuEmb/pcan-basic.git) appears to be unavailable.
+# Uncomment when the repo is restored or provide an alternative source.
+# [target.'cfg(windows)'.dependencies]
+# winapi = { version = "0.3.9", features = ["winuser"] }
+# pcan-basic = { git = "https://github.com/TuEmb/pcan-basic.git", branch="main"}
 
 [target.'cfg(unix)'.dependencies]
 privilege-rs = "0.1.3"
