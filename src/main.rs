@@ -2,9 +2,10 @@ use std::io;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
+mod dbc_model;
 mod event_handler;
 use can_dbc::DBC;
-use event_handler::{CanHandler, DBCFile, DebugHandler, Init, PacketFilter};
+use event_handler::{CanHandler, DBCFile, DbcEditorHandler, DebugHandler, Init, PacketFilter};
 #[cfg(target_os = "windows")]
 use pcan_basic::bus::UsbBus;
 #[cfg(target_os = "linux")]
@@ -133,6 +134,64 @@ async fn main() -> io::Result<()> {
             is_check,
         };
         packet_filter.process_filter();
+    });
+
+    // DBC Editor handlers
+    let editor_handler = DbcEditorHandler::new(ui.as_weak());
+
+    let handler = editor_handler.clone();
+    ui.on_load_dbc_for_edit(move || {
+        handler.load_dbc_for_edit();
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_save_dbc(move || {
+        handler.save_dbc();
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_save_dbc_as(move || {
+        handler.save_dbc_as();
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_select_message(move |idx| {
+        handler.select_message(idx);
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_select_signal(move |idx| {
+        handler.select_signal(idx);
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_add_message(move || {
+        handler.add_message();
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_remove_message(move |idx| {
+        handler.remove_message(idx);
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_update_message(move |msg| {
+        handler.update_message(msg);
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_add_signal(move |msg_idx| {
+        handler.add_signal(msg_idx);
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_remove_signal(move |msg_idx, sig_idx| {
+        handler.remove_signal(msg_idx, sig_idx);
+    });
+
+    let handler = editor_handler.clone();
+    ui.on_editor_update_signal(move |msg_idx, sig| {
+        handler.update_signal(msg_idx, sig);
     });
 
     ui.window().on_close_requested(|| {

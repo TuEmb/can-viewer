@@ -1,10 +1,12 @@
 pub(crate) mod can_handler;
+pub(crate) mod dbc_editor;
 pub(crate) mod dbc_file;
 pub(crate) mod debug;
 pub(crate) mod filter;
 pub(crate) mod init;
 
 pub use can_handler::CanHandler;
+pub use dbc_editor::DbcEditorHandler;
 pub use dbc_file::DBCFile;
 pub use debug::DebugHandler;
 pub use filter::PacketFilter;

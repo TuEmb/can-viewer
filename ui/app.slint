@@ -2,12 +2,13 @@ import { ComboBox, Button, VerticalBox, CheckBox, GroupBox } from "std-widgets.s
 import { TextEdit } from "std-widgets.slint";
 import { AboutSlint, Palette, Slider, HorizontalBox } from "std-widgets.slint";
 import { LineEdit, StandardButton, ScrollView, TabWidget, ListView } from "std-widgets.slint";
-import { CanData, CanMessage, CanSignal } from "messages.slint";
+import { CanData, CanMessage, CanSignal, EditableMessageData, EditableSignalData, SignalListItem } from "messages.slint";
 import { viewPage } from "view_page.slint";
 import { filterPage } from "filter_page.slint";
 import { selectPage } from "page_selection.slint";
 import { initPage, socket_info } from "init_page.slint";
 import { raw_can, debugPage } from "debug_page.slint";
+import { dbcEditorPage } from "dbc_editor_page.slint";
 
 export component AppWindow inherits Window {
     in property <bool> is_filter: false;
@@ -23,9 +24,32 @@ export component AppWindow inherits Window {
     in-out property <int> bitrate;
     in property <[raw_can]> raw_data;
 
+    // DBC Editor properties
+    in property <[EditableMessageData]> editor_messages: [];
+    in property <[SignalListItem]> editor_current_signals: [];
+    in-out property <int> editor_selected_message: -1;
+    in-out property <int> editor_selected_signal: -1;
+    in property <EditableMessageData> editor_selected_message_data;
+    in property <EditableSignalData> editor_selected_signal_data;
+    in property <bool> editor_has_unsaved_changes: false;
+    in property <string> editor_file_path: "";
+
     in-out property <int> active-page: 0;
 
     callback open_dbc_file();
+
+    // DBC Editor callbacks
+    callback load_dbc_for_edit();
+    callback save_dbc();
+    callback save_dbc_as();
+    callback editor_select_message(int);
+    callback editor_select_signal(int);
+    callback editor_add_message();
+    callback editor_remove_message(int);
+    callback editor_update_message(EditableMessageData);
+    callback editor_add_signal(int);
+    callback editor_remove_signal(int, int);
+    callback editor_update_signal(int, EditableSignalData);
     callback filter_id(CanData, bool);
     callback start(string, int, string);
     callback can_transmit(bool, string, string);
@@ -60,6 +84,7 @@ export component AppWindow inherits Window {
                     filter-selection.is_selected = false;
                     debug-selection.is_selected = false;
                     chart-selection.is_selected = false;
+                    editor-selection.is_selected = false;
                     active-page = 0;
                 }
             }
@@ -70,6 +95,7 @@ export component AppWindow inherits Window {
                     view-selection.is_selected = false;
                     debug-selection.is_selected = false;
                     chart-selection.is_selected = false;
+                    editor-selection.is_selected = false;
                     active-page = 1;
                 }
             }
@@ -80,6 +106,7 @@ export component AppWindow inherits Window {
                     filter-selection.is_selected = false;
                     view-selection.is_selected = false;
                     chart-selection.is_selected = false;
+                    editor-selection.is_selected = false;
                     active-page = 2;
                 }
             }
@@ -90,7 +117,19 @@ export component AppWindow inherits Window {
                     filter-selection.is_selected = false;
                     debug-selection.is_selected = false;
                     view-selection.is_selected = false;
+                    editor-selection.is_selected = false;
                     active-page = 3;
+                }
+            }
+            editor_selection := selectPage {
+                text: "editor";
+                is_selected: false;
+                selected => {
+                    filter-selection.is_selected = false;
+                    debug-selection.is_selected = false;
+                    view-selection.is_selected = false;
+                    chart-selection.is_selected = false;
+                    active-page = 4;
                 }
             }
         }
@@ -136,6 +175,29 @@ export component AppWindow inherits Window {
                 can_data_check_string(data) => {
                     can_data_check_string(data)
                 }
+            }
+            if root.active-page == 4:
+            dbcEditorPage {
+                messages: editor_messages;
+                current-message-signals: editor_current_signals;
+                selected-message-index: editor_selected_message;
+                selected-signal-index: editor_selected_signal;
+                selected-message: editor_selected_message_data;
+                selected-signal: editor_selected_signal_data;
+                has-unsaved-changes: editor_has_unsaved_changes;
+                loaded-file-path: editor_file_path;
+
+                load-dbc-for-edit => { load_dbc_for_edit(); }
+                save-dbc => { save_dbc(); }
+                save-dbc-as => { save_dbc_as(); }
+                select-message(idx) => { editor_select_message(idx); }
+                select-signal(idx) => { editor_select_signal(idx); }
+                add-message => { editor_add_message(); }
+                remove-message(idx) => { editor_remove_message(idx); }
+                update-message(msg) => { editor_update_message(msg); }
+                add-signal(msg_idx) => { editor_add_signal(msg_idx); }
+                remove-signal(msg_idx, sig_idx) => { editor_remove_signal(msg_idx, sig_idx); }
+                update-signal(msg_idx, sig) => { editor_update_signal(msg_idx, sig); }
             }
         }
     }

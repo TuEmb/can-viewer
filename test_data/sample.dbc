@@ -1,0 +1,28 @@
+VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_: ECU1 ECU2
+
+BO_ 256 EngineData: 8 ECU1
+ SG_ EngineSpeed : 0|16@1+ (0.25,0) [0|16383.75] "rpm" ECU2
+ SG_ EngineTemp : 16|8@1+ (1,-40) [-40|215] "degC" ECU2
+ SG_ ThrottlePosition : 24|8@1+ (0.392157,0) [0|100] "%" ECU2
+
+BO_ 512 VehicleSpeed: 4 ECU1
+ SG_ Speed : 0|16@1+ (0.01,0) [0|655.35] "km/h" ECU2
+ SG_ Odometer : 16|16@1+ (0.1,0) [0|6553.5] "km" ECU2
+
+BO_ 768 BatteryStatus: 8 ECU2
+ SG_ Voltage : 0|16@1+ (0.001,0) [0|65.535] "V" ECU1
+ SG_ Current : 16|16@1- (0.1,-3276.8) [-3276.8|3276.7] "A" ECU1
+ SG_ StateOfCharge : 32|8@1+ (0.5,0) [0|100] "%" ECU1
+ SG_ Temperature : 40|8@1+ (1,-40) [-40|215] "degC" ECU1
+
+CM_ BO_ 256 "Engine data message sent periodically";
+CM_ SG_ 256 EngineSpeed "Engine rotational speed";
+CM_ SG_ 256 EngineTemp "Engine coolant temperature";
+CM_ BO_ 512 "Vehicle speed and odometer data";
+CM_ BO_ 768 "Battery management system status";
